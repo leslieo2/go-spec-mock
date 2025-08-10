@@ -33,19 +33,17 @@ func New(specPath string) (*Parser, error) {
 }
 
 func (p *Parser) GetRoutes() []Route {
-	var routes []Route
+	paths := p.doc.Paths.Map()
+	routes := make([]Route, 0, len(paths)*3) // Pre-allocate with estimated capacity
 
-	for path, pathItem := range p.doc.Paths.Map() {
-		methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
-		for _, method := range methods {
-			operation := pathItem.GetOperation(method)
-			if operation != nil {
-				route := Route{
+	for path, pathItem := range paths {
+		for method := range methodMap {
+			if operation := pathItem.GetOperation(method); operation != nil {
+				routes = append(routes, Route{
 					Path:      path,
 					Method:    method,
 					Operation: operation,
-				}
-				routes = append(routes, route)
+				})
 			}
 		}
 	}
@@ -77,8 +75,8 @@ func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode st
 		return jsonContent.Example, nil
 	}
 
-	if jsonContent.Schema != nil && jsonContent.Schema.Value != nil {
-		return generateExampleFromSchema(jsonContent.Schema.Value), nil
+	if schema := jsonContent.Schema; schema != nil && schema.Value != nil {
+		return generateExampleFromSchema(schema.Value), nil
 	}
 
 	return nil, fmt.Errorf("no example or schema found")
@@ -89,32 +87,44 @@ func generateExampleFromSchema(schema *openapi3.Schema) interface{} {
 		return nil
 	}
 
-	if schema.Type.Is("object") {
-		result := make(map[string]interface{})
+	switch {
+	case schema.Type.Is("object"):
+		result := make(map[string]interface{}, len(schema.Properties))
 		for propName, prop := range schema.Properties {
 			if prop.Value != nil {
 				result[propName] = generateExampleFromSchema(prop.Value)
 			}
 		}
 		return result
-	} else if schema.Type.Is("array") {
+	case schema.Type.Is("array"):
 		if schema.Items != nil && schema.Items.Value != nil {
 			return []interface{}{generateExampleFromSchema(schema.Items.Value)}
 		}
 		return []interface{}{}
-	} else if schema.Type.Is("string") {
+	case schema.Type.Is("string"):
 		if len(schema.Enum) > 0 {
 			return schema.Enum[0]
 		}
 		return "string"
-	} else if schema.Type.Is("number") {
+	case schema.Type.Is("number"):
 		return 0.0
-	} else if schema.Type.Is("integer") {
+	case schema.Type.Is("integer"):
 		return 0
-	} else if schema.Type.Is("boolean") {
+	case schema.Type.Is("boolean"):
 		return true
+	default:
+		return nil
 	}
-	return nil
+}
+
+var methodMap = map[string]struct{}{
+	"GET":     {},
+	"POST":    {},
+	"PUT":     {},
+	"DELETE":  {},
+	"PATCH":   {},
+	"HEAD":    {},
+	"OPTIONS": {},
 }
 
 type Route struct {

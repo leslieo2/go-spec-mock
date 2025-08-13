@@ -93,7 +93,7 @@ security:
 	@if command -v gosec >/dev/null 2>&1; then \
 		gosec -quiet ./...; \
 	else \
-		echo "gosec not found, install with: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest"; \
+		echo "gosec not found, install with: go install github.com/securego/gosec/v2/cmd/gosec@latest"; \
 	fi
 
 # Build for multiple platforms

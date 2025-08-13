@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -17,7 +18,9 @@ func New(specPath string) (*Parser, error) {
 	loader := openapi3.NewLoader()
 	loader.IsExternalRefsAllowed = true
 
-	data, err := os.ReadFile(specPath)
+	cleanedPath := filepath.Clean(specPath)
+
+	data, err := os.ReadFile(cleanedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read spec file: %w", err)
 	}

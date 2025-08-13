@@ -7,7 +7,7 @@ on:
     branches: [ main, develop, master ]
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.24.5'
 
 jobs:
   test:
@@ -76,7 +76,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
     
     - name: Run Gosec Security Scanner
-      uses: securecodewarrior/github-action-gosec@master
+      uses: securego/gosec@master
       with:
         args: '-quiet ./...'
 
@@ -115,7 +115,7 @@ jobs:
         go build -ldflags "-s -w" -o dist/${BINARY_NAME} .
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
         path: dist/

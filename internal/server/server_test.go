@@ -5,6 +5,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/leslieo2/go-spec-mock/internal/observability"
+	"go.uber.org/zap"
 )
 
 func TestParseStatusCode(t *testing.T) {
@@ -212,7 +215,9 @@ func TestRequestSizeLimitMiddleware_NoLimit(t *testing.T) {
 }
 
 func TestLoggingMiddleware(t *testing.T) {
-	server := &Server{}
+	server := &Server{
+		logger: &observability.Logger{Logger: zap.NewNop()},
+	}
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
@@ -236,6 +241,7 @@ func TestApplyMiddleware(t *testing.T) {
 			Enabled: true,
 		},
 		maxReqSize: 1024,
+		logger:     &observability.Logger{Logger: zap.NewNop()},
 	}
 
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

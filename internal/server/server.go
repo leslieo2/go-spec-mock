@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,7 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
+	"go.opentelemetry.io/otel/attribute"
+	"go.uber.org/zap"
 )
 
 type Server struct {
@@ -26,6 +28,12 @@ type Server struct {
 	cache      *sync.Map
 	routes     []parser.Route
 	routeMap   map[string][]parser.Route
+	
+	// Observability
+	logger   *observability.Logger
+	metrics  *observability.Metrics
+	tracer   *observability.Tracer
+	startTime time.Time
 }
 
 type CORSConfig struct {
@@ -41,6 +49,18 @@ func New(specFile, host, port string) (*Server, error) {
 	p, err := parser.New(specFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse OpenAPI spec: %w", err)
+	}
+
+	// Initialize observability
+	logger, err := observability.NewLogger(observability.DefaultLogConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize logger: %w", err)
+	}
+
+	metrics := observability.NewMetrics()
+	tracer, err := observability.NewTracer(observability.DefaultTraceConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
 	}
 
 	// Pre-build routes and route map
@@ -59,6 +79,10 @@ func New(specFile, host, port string) (*Server, error) {
 		cache:      &sync.Map{},
 		routes:     routes,
 		routeMap:   routeMap,
+		logger:     logger,
+		metrics:    metrics,
+		tracer:     tracer,
+		startTime:  time.Now(),
 	}, nil
 }
 
@@ -76,18 +100,10 @@ func defaultCORSConfig() *CORSConfig {
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
-	for path, routes := range s.routeMap {
-		s.registerRoute(mux, path, routes)
-	}
-
-	// Add health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
-			log.Printf("Error encoding health response: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		}
-	})
+	// Add observability endpoints
+	mux.HandleFunc("/health", s.healthHandler)
+	mux.HandleFunc("/metrics", s.metricsHandler)
+	mux.HandleFunc("/ready", s.readinessHandler)
 
 	// Add documentation endpoint
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +114,11 @@ func (s *Server) Start() error {
 		}
 	})
 
+	// Register OpenAPI routes
+	for path, routes := range s.routeMap {
+		s.registerRoute(mux, path, routes)
+	}
+
 	// Apply middleware chain
 	handler := s.applyMiddleware(mux)
 
@@ -107,24 +128,46 @@ func (s *Server) Start() error {
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
-		// Optimized settings for better performance
 		MaxHeaderBytes: 1 << 20, // 1MB max header size
 	}
 
-	log.Printf("Registered %d routes", len(s.routes))
+	s.logger.Logger.Info("Starting server",
+		zap.String("host", s.host),
+		zap.String("port", s.port),
+		zap.Int("routes", len(s.routes)),
+	)
+
+	s.metrics.SetHealthStatus(true)
+
+	// Start metrics server in background
+	if s.metrics != nil {
+		go func() {
+			metricsMux := http.NewServeMux()
+			metricsMux.Handle("/metrics", s.metrics.Handler())
+			metricsServer := &http.Server{
+				Addr:    ":9090",
+				Handler: metricsMux,
+			}
+			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				s.logger.Logger.Error("Metrics server failed", zap.Error(err))
+			}
+		}()
+	}
 
 	// Graceful shutdown
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed to start: %v", err)
+			s.logger.Logger.Fatal("Server failed to start", zap.Error(err))
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
+	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	
+	s.logger.Logger.Info("Shutting down server...")
+	s.metrics.SetHealthStatus(false)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -134,12 +177,10 @@ func (s *Server) Start() error {
 
 func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.Route) {
 	// Convert OpenAPI path parameters to Go http.ServeMux format
-	// Replace {petId} with * for wildcard matching
 	muxPath := strings.ReplaceAll(path, "{", "")
 	muxPath = strings.ReplaceAll(muxPath, "}", "")
 
 	// Handle path parameters - convert to wildcard for Go's ServeMux
-	// This is a simple approach for path parameters
 	if strings.Contains(muxPath, "petId") {
 		muxPath = "/pets/"
 	}
@@ -157,15 +198,42 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		
+		_, span := s.tracer.StartSpan(r.Context(), "handle_request",
+			attribute.String("http.method", r.Method),
+			attribute.String("http.path", path),
+			attribute.String("http.user_agent", r.UserAgent()),
+		)
+		defer span.End()
+
+		// Get request size
+		requestSize := r.ContentLength
+		if requestSize < 0 {
+			requestSize = 0
+		}
+
 		// Fast path: check if method exists
 		matchedRoute, exists := routeLookup[r.Method]
 		if !exists {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			
+			response := map[string]interface{}{
 				"error":   fmt.Sprintf("Method %s not allowed", r.Method),
 				"methods": methods,
-			})
+			}
+			
+			_ = json.NewEncoder(w).Encode(response)
+			
+			s.metrics.RecordRequest(r.Method, path, http.StatusMethodNotAllowed, 
+				time.Since(start), requestSize, 0)
+			
+			s.logger.Logger.Warn("Method not allowed",
+				zap.String("method", r.Method),
+				zap.String("path", path),
+				zap.String("remote_addr", r.RemoteAddr),
+			)
 			return
 		}
 
@@ -177,10 +245,16 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 			if response, ok := cached.(cachedResponse); ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(response.StatusCode)
-				if _, err := w.Write(response.Body); err != nil {
-					log.Printf("Error writing cached response: %v", err)
-					// Optionally, handle this error more gracefully, e.g., by returning a 500
-				}
+				_, _ = w.Write(response.Body)
+				
+				s.metrics.RecordRequest(r.Method, path, response.StatusCode, 
+					time.Since(start), requestSize, int64(len(response.Body)))
+				
+				s.logger.Logger.Debug("Served from cache",
+					zap.String("method", r.Method),
+					zap.String("path", path),
+					zap.Int("status_code", response.StatusCode),
+				)
 				return
 			}
 		}
@@ -206,9 +280,20 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 			if !found {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNotFound)
-				_ = json.NewEncoder(w).Encode(map[string]string{
+				
+				response := map[string]string{
 					"error": fmt.Sprintf("No example found for status code %s", statusCode),
-				})
+				}
+				
+				_ = json.NewEncoder(w).Encode(response)
+				
+				s.metrics.RecordRequest(r.Method, path, http.StatusNotFound, 
+					time.Since(start), requestSize, 0)
+				
+				s.logger.Logger.Warn("No example found",
+					zap.String("status_code", statusCode),
+					zap.String("path", path),
+				)
 				return
 			}
 		}
@@ -218,13 +303,25 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{
+			
+			response := map[string]string{
 				"error": "Failed to serialize response",
-			})
+			}
+			
+			_ = json.NewEncoder(w).Encode(response)
+			
+			s.metrics.RecordRequest(r.Method, path, http.StatusInternalServerError, 
+				time.Since(start), requestSize, 0)
+			
+			s.logger.Logger.Error("Failed to serialize response",
+				zap.Error(err),
+				zap.String("path", path),
+			)
 			return
 		}
 
 		status := parseStatusCode(statusCode)
+		responseSize := int64(len(buf))
 
 		// Cache the response
 		s.cache.Store(cacheKey, cachedResponse{
@@ -234,13 +331,25 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
-		if _, err := w.Write(buf); err != nil {
-			log.Printf("Error writing response: %v", err)
-			// Optionally, handle this error more gracefully, e.g., by returning a 500
-		}
+		w.Write(buf)
+		
+		s.metrics.RecordRequest(r.Method, path, status, 
+			time.Since(start), requestSize, responseSize)
+		
+		s.logger.Logger.Debug("Request processed",
+			zap.String("method", r.Method),
+			zap.String("path", path),
+			zap.Int("status_code", status),
+			zap.Duration("duration", time.Since(start)),
+			zap.Int64("request_size", requestSize),
+			zap.Int64("response_size", responseSize),
+		)
 	}
 
-	log.Printf("Registered route: %s %s", strings.Join(methods, ","), path)
+	s.logger.Logger.Info("Registered route",
+		zap.String("methods", strings.Join(methods, ",")),
+		zap.String("path", path),
+	)
 	mux.HandleFunc(muxPath, handler)
 }
 
@@ -249,24 +358,101 @@ type cachedResponse struct {
 	Body       []byte
 }
 
-func (s *Server) serveDocumentation(w http.ResponseWriter, _ *http.Request) {
-	doc := struct {
-		Message string              `json:"message"`
-		Routes  []map[string]string `json:"routes"`
-	}{
-		Message: "Go-Spec-Mock is running!",
-		Routes:  make([]map[string]string, 0, len(s.routes)),
-	}
+func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
+	_, span := s.tracer.StartSpan(r.Context(), "health_check")
+	defer span.End()
 
-	for _, route := range s.routes {
-		doc.Routes = append(doc.Routes, map[string]string{
-			"method": route.Method,
-			"path":   route.Path,
-		})
+	uptime := time.Since(s.startTime)
+	health := observability.HealthStatus{
+		Status:    "healthy",
+		Timestamp: time.Now(),
+		Version:   "1.0.0",
+		Uptime:    uptime.String(),
+		Checks: map[string]bool{
+			"parser": s.parser != nil,
+			"routes": len(s.routes) > 0,
+		},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(health)
+
+	s.logger.Logger.Debug("Health check completed",
+		zap.String("path", r.URL.Path),
+		zap.String("remote_addr", r.RemoteAddr),
+	)
+}
+
+func (s *Server) readinessHandler(w http.ResponseWriter, r *http.Request) {
+	_, span := s.tracer.StartSpan(r.Context(), "readiness_check")
+	defer span.End()
+
+	ready := len(s.routes) > 0 && s.parser != nil
+	
+	if ready {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "not ready"})
+	}
+
+	s.logger.Logger.Debug("Readiness check completed",
+		zap.String("path", r.URL.Path),
+		zap.Bool("ready", ready),
+	)
+}
+
+func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
+	s.metrics.Handler().ServeHTTP(w, r)
+}
+
+func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
+	_, span := s.tracer.StartSpan(r.Context(), "documentation")
+	defer span.End()
+
+	type RouteInfo struct {
+		Method string `json:"method"`
+		Path   string `json:"path"`
+		Description string `json:"description,omitempty"`
+	}
+
+	doc := struct {
+		Message     string      `json:"message"`
+		Version     string      `json:"version"`
+		Environment string      `json:"environment"`
+		Endpoints   []RouteInfo `json:"endpoints"`
+		Observability struct {
+			Health   string `json:"health"`
+			Metrics  string `json:"metrics"`
+			Readiness string `json:"readiness"`
+		} `json:"observability"`
+	}{
+		Message:     "Go-Spec-Mock Enterprise API Server",
+		Version:     "1.0.0",
+		Environment: "production",
+		Endpoints:   make([]RouteInfo, 0, len(s.routes)),
+	}
+
+	for _, route := range s.routes {
+		doc.Endpoints = append(doc.Endpoints, RouteInfo{
+			Method: route.Method,
+			Path:   route.Path,
+		})
+	}
+
+	doc.Observability.Health = "/health"
+	doc.Observability.Metrics = "/metrics"
+	doc.Observability.Readiness = "/ready"
+
+	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(doc)
+
+	s.logger.Logger.Debug("Documentation served",
+		zap.String("path", r.URL.Path),
+		zap.Int("routes", len(s.routes)),
+	)
 }
 
 func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
@@ -330,11 +516,9 @@ func (s *Server) requestSizeLimitMiddleware(next http.Handler) http.Handler {
 		if s.maxReqSize > 0 && r.ContentLength > s.maxReqSize {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
-			if err := json.NewEncoder(w).Encode(map[string]string{
+			_ = json.NewEncoder(w).Encode(map[string]string{
 				"error": fmt.Sprintf("Request body too large, max size: %d bytes", s.maxReqSize),
-			}); err != nil {
-				log.Printf("Error encoding request size limit response: %v", err)
-			}
+			})
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -351,7 +535,15 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapped, r)
 
 		duration := time.Since(start)
-		log.Printf("[%s] %s %s - %d (%s)", r.Method, r.URL.Path, r.RemoteAddr, wrapped.statusCode, duration)
+		
+		s.logger.Logger.Info("HTTP request",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.String("remote_addr", r.RemoteAddr),
+			zap.Int("status_code", wrapped.statusCode),
+			zap.Duration("duration", duration),
+			zap.String("user_agent", r.UserAgent()),
+		)
 	})
 }
 

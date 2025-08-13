@@ -135,6 +135,29 @@ Customize the server with the following flags:
 | `-host`     | The host to bind the server to.  | `127.0.0.1`   |
 | `-port`     | The port to run the server on.   | `8080`        |
 
+### Observability Endpoints
+
+The server provides built-in observability endpoints:
+
+| Endpoint   | Description                                      |
+|------------|--------------------------------------------------|
+| `/health`  | Health check endpoint with service status        |
+| `/ready`   | Readiness probe for load balancers               |
+| `/metrics` | Prometheus metrics endpoint                      |
+| `/`        | API documentation with available endpoints       |
+
+**Example:**
+```bash
+# Check health status
+curl http://localhost:8080/health
+
+# View Prometheus metrics
+curl http://localhost:8080/metrics
+
+# Check readiness
+curl http://localhost:8080/ready
+```
+
 **Example:**
 
 ```bash
@@ -238,17 +261,19 @@ The project is currently at **v1.0.0** and is stable for general use. The future
 <summary><strong>📋 Phase 2: Enterprise Enhancements (Planned)</strong></summary>
 
 #### 🔒 Security & Robustness
-- [ ] Request size limiting
-- [ ] Configurable log levels (DEBUG, INFO, WARN, ERROR)
+- [x] Request size limiting
+- [x] Configurable log levels (DEBUG, INFO, WARN, ERROR)
 - [ ] Sensitive data masking in logs
 
 #### 📊 Observability
-- [ ] Structured (JSON) logging
-- [ ] Prometheus metrics endpoint (`/metrics`)
-- [ ] Distributed tracing support (e.g., Trace-ID headers)
+- [x] Structured (JSON) logging
+- [x] Prometheus metrics endpoint (`/metrics`)
+- [x] Distributed tracing support (OpenTelemetry)
+- [x] Health check endpoint (`/health`)
+- [x] Readiness probe (`/ready`)
 
 #### 🛡️ Advanced Configuration
-- [ ] CORS (Cross-Origin Resource Sharing) configuration
+- [x] CORS (Cross-Origin Resource Sharing) configuration
 - [ ] Rate limiting
 - [ ] Basic API key authentication
 - [ ] HTTPS/TLS support

@@ -22,7 +22,7 @@ go-spec-mock ./examples/petstore.yaml -host 0.0.0.0 -port 8080
 
 ## 🎯 Motivation
 
-While Go has powerful OpenAPI code generation tools, it lacks a simple, standalone API mock server like [Prism](https://github.com/stoplight/prism) (TypeScript) or [MockServer](https://github.com/mock-server/mockserver) (Java) that can be started with a single command from an OpenAPI specification.
+While Go has powerful OpenAPI code generation tools, it lacked a simple, standalone API mock server like [Prism](https://github.com/stoplight/prism) (TypeScript) or [MockServer](https://github.com/mock-server/mockserver) (Java) that can be started with a single command from an OpenAPI specification.
 
 **Go-Spec-Mock** fills this gap by providing a:
 - **Zero-dependency** single binary solution
@@ -220,20 +220,24 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 🎯 Project Status
 
-**✅ COMPLETE** - All features successfully implemented and tested!
+**✅ v1.0.0 RELEASED** - Core features complete and tested!
 
-This project demonstrates enterprise-grade Go development with:
+Current release includes:
 - Clean architecture following best practices
 - Comprehensive test coverage
-- Production-ready features
+- Production-ready core features
 - Excellent documentation
 - Zero external runtime dependencies
 
+**🚀 Enterprise features in development** - see roadmap below
+
 ## 🎯 Enterprise Implementation Roadmap
 
-### ✅ Phase 1: Core Enhancements (Completed)
-- ✅ Graceful shutdown handling
-- ✅ Timeout control
+### ✅ Phase 1: Core Features (Completed)
+- ✅ OpenAPI 3.0 specification parsing
+- ✅ Dynamic HTTP routing
+- ✅ Example response generation
+- ✅ Status code override
 - ✅ Cross-platform builds
 - ✅ Professional documentation
 
@@ -281,17 +285,30 @@ This project demonstrates enterprise-grade Go development with:
 - [ ] **Sample configurations** - Production config templates
 - [ ] **Monitoring alerts** - Prometheus rules
 
+## 🐳 Docker Usage
+
+```bash
+# Build Docker image
+make docker
+
+# Run with Docker
+docker run -p 8080:8080 go-spec-mock:latest ./examples/petstore.yaml
+
+# Run with custom port
+docker run -p 3000:8080 go-spec-mock:latest ./examples/petstore.yaml -port 8080
+```
+
 ## 🚀 How to Contribute Enterprise Features
 
 ```bash
-# Develop new features
-make help                   # View all available commands
-make test                   # Ensure tests pass
-make ci                     # Full CI checks
+# View all available commands
+make help
 
-# Add new enterprise features
-make dev                    # Start development environment
-make curl-test              # Test new features
+# Development workflow
+make dev                    # Start development server
+make test                   # Run tests
+make ci                     # Full CI pipeline
+make curl-test              # Test endpoints
 ```
 
 ## 📄 License

@@ -128,6 +128,16 @@ docker:
 	docker tag $(BINARY):$(VERSION) $(BINARY):latest
 	@echo "Docker image built: $(BINARY):$(VERSION)"
 
+# Docker run with example
+docker-run:
+	@echo "Starting Docker container with petstore example..."
+	docker run -p 8080:8080 $(BINARY):latest ./examples/petstore.yaml
+
+# Docker run interactive
+docker-run-dev:
+	@echo "Starting Docker container in development mode..."
+	docker run -it -p 8080:8080 $(BINARY):latest ./examples/petstore.yaml -port 8080
+
 # Quick development server
 dev:
 	@echo "Starting development server..."
@@ -176,37 +186,39 @@ curl-interactive: build
 help:
 	@echo "$(BINARY) - Go API Mock Server"
 	@echo ""
-	@echo "Usage: make [target]"
-	@echo ""
 	@echo "Development:"
-	@echo "  dev         - Start development server"
-	@echo "  watch       - Watch for file changes and rebuild"
-	@echo "  run-example - Run with petstore example"
+	@echo "  dev              - Start development server"
+	@echo "  watch            - Watch for file changes and rebuild"
+	@echo "  run-example      - Run with petstore example"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test        - Run tests with coverage report"
-	@echo "  test-quick  - Run tests without coverage"
-	@echo "  curl-test   - Quick automated curl tests"
+	@echo "  test             - Run tests with coverage report"
+	@echo "  test-quick       - Run tests without coverage"
+	@echo "  curl-test        - Quick automated curl tests"
 	@echo "  curl-interactive - Interactive curl testing"
 	@echo ""
 	@echo "Build:"
-	@echo "  build       - Build the binary"
-	@echo "  build-all   - Build for all platforms (Linux, macOS, Windows)"
-	@echo "  build-version - Build with version info"
-	@echo "  release     - Full release build (optimized)"
+	@echo "  build            - Build the binary"
+	@echo "  build-all        - Build for all platforms"
+	@echo "  build-version    - Build with version info"
+	@echo "  release          - Full release build (optimized)"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker           - Build Docker image"
+	@echo "  docker-run       - Run with petstore example"
+	@echo "  docker-run-dev   - Run interactively"
 	@echo ""
 	@echo "Quality:"
-	@echo "  fmt         - Format code"
-	@echo "  vet         - Run go vet"
-	@echo "  lint        - Run golangci-lint"
-	@echo "  security    - Run security check"
+	@echo "  fmt              - Format code"
+	@echo "  vet              - Run go vet"
+	@echo "  lint             - Run golangci-lint"
+	@echo "  security         - Run security check"
 	@echo ""
 	@echo "Utilities:"
-	@echo "  install     - Install to GOPATH/bin"
-	@echo "  clean       - Clean build artifacts"
-	@echo "  deps        - Install/update dependencies"
-	@echo "  ci          - Full CI pipeline"
-	@echo "  docker      - Build Docker image"
+	@echo "  install          - Install to GOPATH/bin"
+	@echo "  clean            - Clean build artifacts"
+	@echo "  deps             - Install/update dependencies"
+	@echo "  ci               - Full CI pipeline"
 	@echo ""
 	@echo "Version: $(VERSION) ($(COMMIT))"
 	@echo "Build date: $(DATE)"

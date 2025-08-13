@@ -3,12 +3,14 @@ package parser
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
 type Parser struct {
-	doc *openapi3.T
+	doc   *openapi3.T
+	cache *sync.Map // Cache for pre-generated examples
 }
 
 func New(specPath string) (*Parser, error) {
@@ -29,7 +31,7 @@ func New(specPath string) (*Parser, error) {
 		return nil, fmt.Errorf("OpenAPI spec validation failed: %w", err)
 	}
 
-	return &Parser{doc: doc}, nil
+	return &Parser{doc: doc, cache: &sync.Map{}}, nil
 }
 
 func (p *Parser) GetRoutes() []Route {
@@ -39,6 +41,8 @@ func (p *Parser) GetRoutes() []Route {
 	for path, pathItem := range paths {
 		for method := range methodMap {
 			if operation := pathItem.GetOperation(method); operation != nil {
+				// Pre-generate examples for common status codes
+				p.preGenerateExamples(operation)
 				routes = append(routes, Route{
 					Path:      path,
 					Method:    method,
@@ -51,9 +55,29 @@ func (p *Parser) GetRoutes() []Route {
 	return routes
 }
 
+func (p *Parser) preGenerateExamples(operation *openapi3.Operation) {
+	if operation == nil || operation.Responses == nil {
+		return
+	}
+
+	// Pre-generate for common status codes
+	commonCodes := []string{"200", "201", "400", "401", "403", "404", "500"}
+	for _, code := range commonCodes {
+		if _, exists := operation.Responses.Map()[code]; exists {
+			_, _ = p.GetExampleResponse(operation, code)
+		}
+	}
+}
+
 func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode string) (interface{}, error) {
 	if operation.Responses == nil {
 		return nil, fmt.Errorf("no responses defined")
+	}
+
+	// Check cache first
+	cacheKey := operation.OperationID + ":" + statusCode
+	if cached, ok := p.cache.Load(cacheKey); ok {
+		return cached, nil
 	}
 
 	response, exists := operation.Responses.Map()[statusCode]
@@ -71,15 +95,18 @@ func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode st
 		return nil, fmt.Errorf("no application/json content defined")
 	}
 
+	var result interface{}
 	if jsonContent.Example != nil {
-		return jsonContent.Example, nil
+		result = jsonContent.Example
+	} else if schema := jsonContent.Schema; schema != nil && schema.Value != nil {
+		result = generateExampleFromSchema(schema.Value)
+	} else {
+		return nil, fmt.Errorf("no example or schema found")
 	}
 
-	if schema := jsonContent.Schema; schema != nil && schema.Value != nil {
-		return generateExampleFromSchema(schema.Value), nil
-	}
-
-	return nil, fmt.Errorf("no example or schema found")
+	// Cache the result
+	p.cache.Store(cacheKey, result)
+	return result, nil
 }
 
 func generateExampleFromSchema(schema *openapi3.Schema) interface{} {

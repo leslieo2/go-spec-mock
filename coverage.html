@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/leslieo2/go-spec-mock/internal/parser/parser.go (45.8%)</option>
+				<option value="file0">github.com/leslieo2/go-spec-mock/internal/parser/parser.go (58.5%)</option>
 				
-				<option value="file1">github.com/leslieo2/go-spec-mock/internal/server/server.go (3.9%)</option>
+				<option value="file1">github.com/leslieo2/go-spec-mock/internal/server/server.go (36.5%)</option>
 				
 				<option value="file2">github.com/leslieo2/go-spec-mock/main.go (0.0%)</option>
 				
@@ -66,8 +66,17 @@
 			<div id="legend">
 				<span>not tracked</span>
 			
-				<span class="cov0">not covered</span>
-				<span class="cov8">covered</span>
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
 			
 			</div>
 		</div>
@@ -78,85 +87,110 @@
 import (
         "fmt"
         "os"
+        "sync"
 
         "github.com/getkin/kin-openapi/openapi3"
 )
 
 type Parser struct {
-        doc *openapi3.T
+        doc   *openapi3.T
+        cache *sync.Map // Cache for pre-generated examples
 }
 
-func New(specPath string) (*Parser, error) <span class="cov8" title="1">{
+func New(specPath string) (*Parser, error) <span class="cov4" title="6">{
         loader := openapi3.NewLoader()
         loader.IsExternalRefsAllowed = true
 
         data, err := os.ReadFile(specPath)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("failed to read spec file: %w", err)
         }</span>
 
-        <span class="cov8" title="1">doc, err := loader.LoadFromData(data)
+        <span class="cov4" title="5">doc, err := loader.LoadFromData(data)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("failed to parse OpenAPI spec: %w", err)
         }</span>
 
-        <span class="cov8" title="1">if err := doc.Validate(loader.Context); err != nil </span><span class="cov0" title="0">{
+        <span class="cov4" title="5">if err := doc.Validate(loader.Context); err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("OpenAPI spec validation failed: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return &amp;Parser{doc: doc}, nil</span>
+        <span class="cov4" title="5">return &amp;Parser{doc: doc, cache: &amp;sync.Map{}}, nil</span>
 }
 
-func (p *Parser) GetRoutes() []Route <span class="cov8" title="1">{
-        var routes []Route
+func (p *Parser) GetRoutes() []Route <span class="cov3" title="4">{
+        paths := p.doc.Paths.Map()
+        routes := make([]Route, 0, len(paths)*3) // Pre-allocate with estimated capacity
 
-        for path, pathItem := range p.doc.Paths.Map() </span><span class="cov8" title="1">{
-                methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
-                for _, method := range methods </span><span class="cov8" title="1">{
-                        operation := pathItem.GetOperation(method)
-                        if operation != nil </span><span class="cov8" title="1">{
-                                route := Route{
+        for path, pathItem := range paths </span><span class="cov4" title="8">{
+                for method := range methodMap </span><span class="cov8" title="56">{
+                        if operation := pathItem.GetOperation(method); operation != nil </span><span class="cov6" title="16">{
+                                // Pre-generate examples for common status codes
+                                p.preGenerateExamples(operation)
+                                routes = append(routes, Route{
                                         Path:      path,
                                         Method:    method,
                                         Operation: operation,
-                                }
-                                routes = append(routes, route)
+                                })
                         }</span>
                 }
         }
 
-        <span class="cov8" title="1">return routes</span>
+        <span class="cov3" title="4">return routes</span>
 }
 
-func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode string) (interface{}, error) <span class="cov8" title="1">{
+func (p *Parser) preGenerateExamples(operation *openapi3.Operation) <span class="cov6" title="16">{
+        if operation == nil || operation.Responses == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        // Pre-generate for common status codes
+        <span class="cov6" title="16">commonCodes := []string{"200", "201", "400", "401", "403", "404", "500"}
+        for _, code := range commonCodes </span><span class="cov10" title="112">{
+                if _, exists := operation.Responses.Map()[code]; exists </span><span class="cov7" title="28">{
+                        _, _ = p.GetExampleResponse(operation, code)
+                }</span>
+        }
+}
+
+func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode string) (interface{}, error) <span class="cov7" title="35">{
         if operation.Responses == nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("no responses defined")
         }</span>
 
-        <span class="cov8" title="1">response, exists := operation.Responses.Map()[statusCode]
-        if !exists || response == nil || response.Value == nil </span><span class="cov0" title="0">{
+        // Check cache first
+        <span class="cov7" title="35">cacheKey := operation.OperationID + ":" + statusCode
+        if cached, ok := p.cache.Load(cacheKey); ok </span><span class="cov3" title="3">{
+                return cached, nil
+        }</span>
+
+        <span class="cov7" title="32">response, exists := operation.Responses.Map()[statusCode]
+        if !exists || response == nil || response.Value == nil </span><span class="cov3" title="4">{
                 return nil, fmt.Errorf("response %s not found", statusCode)
         }</span>
 
-        <span class="cov8" title="1">content := response.Value.Content
+        <span class="cov7" title="28">content := response.Value.Content
         if content == nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("no content defined for response %s", statusCode)
         }</span>
 
-        <span class="cov8" title="1">jsonContent := content.Get("application/json")
+        <span class="cov7" title="28">jsonContent := content.Get("application/json")
         if jsonContent == nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("no application/json content defined")
         }</span>
 
-        <span class="cov8" title="1">if jsonContent.Example != nil </span><span class="cov8" title="1">{
-                return jsonContent.Example, nil
+        <span class="cov7" title="28">var result interface{}
+        if jsonContent.Example != nil </span><span class="cov7" title="28">{
+                result = jsonContent.Example
+        }</span> else<span class="cov0" title="0"> if schema := jsonContent.Schema; schema != nil &amp;&amp; schema.Value != nil </span><span class="cov0" title="0">{
+                result = generateExampleFromSchema(schema.Value)
+        }</span> else<span class="cov0" title="0"> {
+                return nil, fmt.Errorf("no example or schema found")
         }</span>
 
-        <span class="cov0" title="0">if jsonContent.Schema != nil &amp;&amp; jsonContent.Schema.Value != nil </span><span class="cov0" title="0">{
-                return generateExampleFromSchema(jsonContent.Schema.Value), nil
-        }</span>
-
-        <span class="cov0" title="0">return nil, fmt.Errorf("no example or schema found")</span>
+        // Cache the result
+        <span class="cov7" title="28">p.cache.Store(cacheKey, result)
+        return result, nil</span>
 }
 
 func generateExampleFromSchema(schema *openapi3.Schema) interface{} <span class="cov0" title="0">{
@@ -164,32 +198,44 @@ func generateExampleFromSchema(schema *openapi3.Schema) interface{} <span class=
                 return nil
         }</span>
 
-        <span class="cov0" title="0">if schema.Type.Is("object") </span><span class="cov0" title="0">{
-                result := make(map[string]interface{})
+        <span class="cov0" title="0">switch </span>{
+        case schema.Type.Is("object"):<span class="cov0" title="0">
+                result := make(map[string]interface{}, len(schema.Properties))
                 for propName, prop := range schema.Properties </span><span class="cov0" title="0">{
                         if prop.Value != nil </span><span class="cov0" title="0">{
                                 result[propName] = generateExampleFromSchema(prop.Value)
                         }</span>
                 }
                 <span class="cov0" title="0">return result</span>
-        } else<span class="cov0" title="0"> if schema.Type.Is("array") </span><span class="cov0" title="0">{
+        case schema.Type.Is("array"):<span class="cov0" title="0">
                 if schema.Items != nil &amp;&amp; schema.Items.Value != nil </span><span class="cov0" title="0">{
                         return []interface{}{generateExampleFromSchema(schema.Items.Value)}
                 }</span>
                 <span class="cov0" title="0">return []interface{}{}</span>
-        } else<span class="cov0" title="0"> if schema.Type.Is("string") </span><span class="cov0" title="0">{
+        case schema.Type.Is("string"):<span class="cov0" title="0">
                 if len(schema.Enum) &gt; 0 </span><span class="cov0" title="0">{
                         return schema.Enum[0]
                 }</span>
                 <span class="cov0" title="0">return "string"</span>
-        } else<span class="cov0" title="0"> if schema.Type.Is("number") </span><span class="cov0" title="0">{
-                return 0.0
-        }</span> else<span class="cov0" title="0"> if schema.Type.Is("integer") </span><span class="cov0" title="0">{
-                return 0
-        }</span> else<span class="cov0" title="0"> if schema.Type.Is("boolean") </span><span class="cov0" title="0">{
-                return true
-        }</span>
-        <span class="cov0" title="0">return nil</span>
+        case schema.Type.Is("number"):<span class="cov0" title="0">
+                return 0.0</span>
+        case schema.Type.Is("integer"):<span class="cov0" title="0">
+                return 0</span>
+        case schema.Type.Is("boolean"):<span class="cov0" title="0">
+                return true</span>
+        default:<span class="cov0" title="0">
+                return nil</span>
+        }
+}
+
+var methodMap = map[string]struct{}{
+        "GET":     {},
+        "POST":    {},
+        "PUT":     {},
+        "DELETE":  {},
+        "PATCH":   {},
+        "HEAD":    {},
+        "OPTIONS": {},
 }
 
 type Route struct {
@@ -210,6 +256,7 @@ import (
         "os"
         "os/signal"
         "strings"
+        "sync"
         "syscall"
         "time"
 
@@ -217,12 +264,15 @@ import (
 )
 
 type Server struct {
-        parser    *parser.Parser
-        host      string
-        port      string
-        server    *http.Server
-        corsCfg   *CORSConfig
+        parser     *parser.Parser
+        host       string
+        port       string
+        server     *http.Server
+        corsCfg    *CORSConfig
         maxReqSize int64
+        cache      *sync.Map
+        routes     []parser.Route
+        routeMap   map[string][]parser.Route
 }
 
 type CORSConfig struct {
@@ -234,22 +284,32 @@ type CORSConfig struct {
         MaxAge           int
 }
 
-func New(specFile, host, port string) (*Server, error) <span class="cov0" title="0">{
-        parser, err := parser.New(specFile)
-        if err != nil </span><span class="cov0" title="0">{
+func New(specFile, host, port string) (*Server, error) <span class="cov5" title="2">{
+        p, err := parser.New(specFile)
+        if err != nil </span><span class="cov5" title="2">{
                 return nil, fmt.Errorf("failed to parse OpenAPI spec: %w", err)
         }</span>
 
+        // Pre-build routes and route map
+        <span class="cov0" title="0">routes := p.GetRoutes()
+        routeMap := make(map[string][]parser.Route)
+        for _, route := range routes </span><span class="cov0" title="0">{
+                routeMap[route.Path] = append(routeMap[route.Path], route)
+        }</span>
+
         <span class="cov0" title="0">return &amp;Server{
-                parser:     parser,
+                parser:     p,
                 host:       host,
                 port:       port,
                 corsCfg:    defaultCORSConfig(),
                 maxReqSize: 10 * 1024 * 1024, // 10MB default limit
+                cache:      &amp;sync.Map{},
+                routes:     routes,
+                routeMap:   routeMap,
         }, nil</span>
 }
 
-func defaultCORSConfig() *CORSConfig <span class="cov0" title="0">{
+func defaultCORSConfig() *CORSConfig <span class="cov1" title="1">{
         return &amp;CORSConfig{
                 Enabled:          true,
                 AllowedOrigins:   []string{"*"},
@@ -262,15 +322,8 @@ func defaultCORSConfig() *CORSConfig <span class="cov0" title="0">{
 
 func (s *Server) Start() error <span class="cov0" title="0">{
         mux := http.NewServeMux()
-        routes := s.parser.GetRoutes()
 
-        // Group routes by path to handle method-based routing
-        routeMap := make(map[string][]parser.Route)
-        for _, route := range routes </span><span class="cov0" title="0">{
-                routeMap[route.Path] = append(routeMap[route.Path], route)
-        }</span>
-
-        <span class="cov0" title="0">for path, routes := range routeMap </span><span class="cov0" title="0">{
+        for path, routes := range s.routeMap </span><span class="cov0" title="0">{
                 s.registerRoute(mux, path, routes)
         }</span>
 
@@ -298,10 +351,12 @@ func (s *Server) Start() error <span class="cov0" title="0">{
                 ReadTimeout:  15 * time.Second,
                 WriteTimeout: 15 * time.Second,
                 IdleTimeout:  60 * time.Second,
+                // Optimized settings for better performance
+                MaxHeaderBytes: 1 &lt;&lt; 20, // 1MB max header size
         }
 
-        log.Printf("Registered %d routes", len(routes))
-        
+        log.Printf("Registered %d routes", len(s.routes))
+
         // Graceful shutdown
         go func() </span><span class="cov0" title="0">{
                 if err := s.server.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
@@ -333,34 +388,44 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
                 muxPath = "/pets/"
         }</span>
 
-        <span class="cov0" title="0">handler := func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
-                // Find the route that matches the request method
-                var matchedRoute *parser.Route
-                for _, route := range routes </span><span class="cov0" title="0">{
-                        if route.Method == r.Method </span><span class="cov0" title="0">{
-                                matchedRoute = &amp;route
-                                break</span>
-                        }
-                }
+        // Pre-compute supported methods for this path
+        <span class="cov0" title="0">methods := make([]string, 0, len(routes))
+        for _, route := range routes </span><span class="cov0" title="0">{
+                methods = append(methods, route.Method)
+        }</span>
 
-                <span class="cov0" title="0">if matchedRoute == nil </span><span class="cov0" title="0">{
+        // Create a fast lookup map for routes
+        <span class="cov0" title="0">routeLookup := make(map[string]*parser.Route, len(routes))
+        for i := range routes </span><span class="cov0" title="0">{
+                routeLookup[routes[i].Method] = &amp;routes[i]
+        }</span>
+
+        <span class="cov0" title="0">handler := func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                // Fast path: check if method exists
+                matchedRoute, exists := routeLookup[r.Method]
+                if !exists </span><span class="cov0" title="0">{
                         w.Header().Set("Content-Type", "application/json")
                         w.WriteHeader(http.StatusMethodNotAllowed)
-
-                        // List supported methods
-                        methods := make([]string, 0, len(routes))
-                        for _, route := range routes </span><span class="cov0" title="0">{
-                                methods = append(methods, route.Method)
-                        }</span>
-
-                        <span class="cov0" title="0">json.NewEncoder(w).Encode(map[string]interface{}{
+                        _ = json.NewEncoder(w).Encode(map[string]interface{}{
                                 "error":   fmt.Sprintf("Method %s not allowed", r.Method),
                                 "methods": methods,
                         })
-                        return</span>
+                        return
+                }</span>
+
+                // Cache key for response
+                <span class="cov0" title="0">cacheKey := r.Method + ":" + path + ":" + r.URL.Query().Get("__statusCode")
+
+                // Try to get from cache
+                if cached, ok := s.cache.Load(cacheKey); ok </span><span class="cov0" title="0">{
+                        if response, ok := cached.(cachedResponse); ok </span><span class="cov0" title="0">{
+                                w.Header().Set("Content-Type", "application/json")
+                                w.WriteHeader(response.StatusCode)
+                                w.Write(response.Body)
+                                return
+                        }</span>
                 }
 
-                // Check for status code override
                 <span class="cov0" title="0">statusCode := "200"
                 if override := r.URL.Query().Get("__statusCode"); override != "" </span><span class="cov0" title="0">{
                         statusCode = override
@@ -368,55 +433,70 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 
                 <span class="cov0" title="0">example, err := s.parser.GetExampleResponse(matchedRoute.Operation, statusCode)
                 if err != nil </span><span class="cov0" title="0">{
-                        // Try to find a 2xx response if the requested status code doesn't have an example
+                        // Fast path: check for 2xx responses
                         found := false
                         for code := range matchedRoute.Operation.Responses.Map() </span><span class="cov0" title="0">{
                                 if strings.HasPrefix(code, "2") </span><span class="cov0" title="0">{
-                                        example, err = s.parser.GetExampleResponse(matchedRoute.Operation, code)
-                                        if err == nil </span><span class="cov0" title="0">{
+                                        if example, err = s.parser.GetExampleResponse(matchedRoute.Operation, code); err == nil </span><span class="cov0" title="0">{
                                                 statusCode = code
                                                 found = true
                                                 break</span>
                                         }
                                 }
                         }
-
                         <span class="cov0" title="0">if !found </span><span class="cov0" title="0">{
                                 w.Header().Set("Content-Type", "application/json")
                                 w.WriteHeader(http.StatusNotFound)
-                                json.NewEncoder(w).Encode(map[string]string{
+                                _ = json.NewEncoder(w).Encode(map[string]string{
                                         "error": fmt.Sprintf("No example found for status code %s", statusCode),
                                 })
                                 return
                         }</span>
                 }
 
-                <span class="cov0" title="0">w.Header().Set("Content-Type", "application/json")
-                w.WriteHeader(parseStatusCode(statusCode))
-                json.NewEncoder(w).Encode(example)</span>
-        }
+                // Serialize response
+                <span class="cov0" title="0">buf, err := json.Marshal(example)
+                if err != nil </span><span class="cov0" title="0">{
+                        w.Header().Set("Content-Type", "application/json")
+                        w.WriteHeader(http.StatusInternalServerError)
+                        _ = json.NewEncoder(w).Encode(map[string]string{
+                                "error": "Failed to serialize response",
+                        })
+                        return
+                }</span>
 
-        <span class="cov0" title="0">methods := make([]string, 0, len(routes))
-        for _, route := range routes </span><span class="cov0" title="0">{
-                methods = append(methods, route.Method)
-        }</span>
+                <span class="cov0" title="0">status := parseStatusCode(statusCode)
+
+                // Cache the response
+                s.cache.Store(cacheKey, cachedResponse{
+                        StatusCode: status,
+                        Body:       buf,
+                })
+
+                w.Header().Set("Content-Type", "application/json")
+                w.WriteHeader(status)
+                w.Write(buf)</span>
+        }
 
         <span class="cov0" title="0">log.Printf("Registered route: %s %s", strings.Join(methods, ","), path)
         mux.HandleFunc(muxPath, handler)</span>
 }
 
-func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
-        routes := s.parser.GetRoutes()
+type cachedResponse struct {
+        StatusCode int
+        Body       []byte
+}
 
+func (s *Server) serveDocumentation(w http.ResponseWriter, _ *http.Request) <span class="cov0" title="0">{
         doc := struct {
                 Message string              `json:"message"`
                 Routes  []map[string]string `json:"routes"`
         }{
                 Message: "Go-Spec-Mock is running!",
-                Routes:  make([]map[string]string, 0, len(routes)),
+                Routes:  make([]map[string]string, 0, len(s.routes)),
         }
 
-        for _, route := range routes </span><span class="cov0" title="0">{
+        for _, route := range s.routes </span><span class="cov0" title="0">{
                 doc.Routes = append(doc.Routes, map[string]string{
                         "method": route.Method,
                         "path":   route.Path,
@@ -424,68 +504,68 @@ func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) <spa
         }</span>
 
         <span class="cov0" title="0">w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(doc)</span>
+        _ = json.NewEncoder(w).Encode(doc)</span>
 }
 
-func (s *Server) applyMiddleware(handler http.Handler) http.Handler <span class="cov0" title="0">{
+func (s *Server) applyMiddleware(handler http.Handler) http.Handler <span class="cov1" title="1">{
         // Apply middleware chain in reverse order
-        
+
         // CORS middleware
-        if s.corsCfg != nil &amp;&amp; s.corsCfg.Enabled </span><span class="cov0" title="0">{
+        if s.corsCfg != nil &amp;&amp; s.corsCfg.Enabled </span><span class="cov1" title="1">{
                 handler = s.corsMiddleware(handler)
         }</span>
-        
+
         // Request size limit middleware
-        <span class="cov0" title="0">handler = s.requestSizeLimitMiddleware(handler)
-        
+        <span class="cov1" title="1">handler = s.requestSizeLimitMiddleware(handler)
+
         // Logging middleware
         handler = s.loggingMiddleware(handler)
-        
+
         return handler</span>
 }
 
-func (s *Server) corsMiddleware(next http.Handler) http.Handler <span class="cov0" title="0">{
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+func (s *Server) corsMiddleware(next http.Handler) http.Handler <span class="cov10" title="4">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov10" title="4">{
                 origin := r.Header.Get("Origin")
-                
+
                 // Check if origin is allowed
                 allowed := false
-                for _, allowedOrigin := range s.corsCfg.AllowedOrigins </span><span class="cov0" title="0">{
-                        if allowedOrigin == "*" || allowedOrigin == origin </span><span class="cov0" title="0">{
+                for _, allowedOrigin := range s.corsCfg.AllowedOrigins </span><span class="cov5" title="2">{
+                        if allowedOrigin == "*" || allowedOrigin == origin </span><span class="cov5" title="2">{
                                 allowed = true
                                 break</span>
                         }
                 }
-                
-                <span class="cov0" title="0">if allowed </span><span class="cov0" title="0">{
+
+                <span class="cov10" title="4">if allowed </span><span class="cov5" title="2">{
                         w.Header().Set("Access-Control-Allow-Origin", origin)
-                        if len(s.corsCfg.AllowedMethods) &gt; 0 </span><span class="cov0" title="0">{
+                        if len(s.corsCfg.AllowedMethods) &gt; 0 </span><span class="cov5" title="2">{
                                 w.Header().Set("Access-Control-Allow-Methods", strings.Join(s.corsCfg.AllowedMethods, ", "))
                         }</span>
-                        <span class="cov0" title="0">if len(s.corsCfg.AllowedHeaders) &gt; 0 </span><span class="cov0" title="0">{
+                        <span class="cov5" title="2">if len(s.corsCfg.AllowedHeaders) &gt; 0 </span><span class="cov5" title="2">{
                                 w.Header().Set("Access-Control-Allow-Headers", strings.Join(s.corsCfg.AllowedHeaders, ", "))
                         }</span>
-                        <span class="cov0" title="0">if s.corsCfg.AllowCredentials </span><span class="cov0" title="0">{
+                        <span class="cov5" title="2">if s.corsCfg.AllowCredentials </span><span class="cov1" title="1">{
                                 w.Header().Set("Access-Control-Allow-Credentials", "true")
                         }</span>
-                        <span class="cov0" title="0">if s.corsCfg.MaxAge &gt; 0 </span><span class="cov0" title="0">{
+                        <span class="cov5" title="2">if s.corsCfg.MaxAge &gt; 0 </span><span class="cov1" title="1">{
                                 w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", s.corsCfg.MaxAge))
                         }</span>
                 }
-                
+
                 // Handle preflight requests
-                <span class="cov0" title="0">if r.Method == "OPTIONS" </span><span class="cov0" title="0">{
+                <span class="cov10" title="4">if r.Method == "OPTIONS" </span><span class="cov1" title="1">{
                         w.WriteHeader(http.StatusOK)
                         return
                 }</span>
-                
-                <span class="cov0" title="0">next.ServeHTTP(w, r)</span>
+
+                <span class="cov8" title="3">next.ServeHTTP(w, r)</span>
         })
 }
 
-func (s *Server) requestSizeLimitMiddleware(next http.Handler) http.Handler <span class="cov0" title="0">{
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
-                if s.maxReqSize &gt; 0 &amp;&amp; r.ContentLength &gt; s.maxReqSize </span><span class="cov0" title="0">{
+func (s *Server) requestSizeLimitMiddleware(next http.Handler) http.Handler <span class="cov8" title="3">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov10" title="4">{
+                if s.maxReqSize &gt; 0 &amp;&amp; r.ContentLength &gt; s.maxReqSize </span><span class="cov1" title="1">{
                         w.Header().Set("Content-Type", "application/json")
                         w.WriteHeader(http.StatusRequestEntityTooLarge)
                         json.NewEncoder(w).Encode(map[string]string{
@@ -493,19 +573,19 @@ func (s *Server) requestSizeLimitMiddleware(next http.Handler) http.Handler <spa
                         })
                         return
                 }</span>
-                <span class="cov0" title="0">next.ServeHTTP(w, r)</span>
+                <span class="cov8" title="3">next.ServeHTTP(w, r)</span>
         })
 }
 
-func (s *Server) loggingMiddleware(next http.Handler) http.Handler <span class="cov0" title="0">{
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+func (s *Server) loggingMiddleware(next http.Handler) http.Handler <span class="cov5" title="2">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov5" title="2">{
                 start := time.Now()
-                
+
                 // Create a response writer that captures the status code
                 wrapped := &amp;responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-                
+
                 next.ServeHTTP(wrapped, r)
-                
+
                 duration := time.Since(start)
                 log.Printf("[%s] %s %s - %d (%s)", r.Method, r.URL.Path, r.RemoteAddr, wrapped.statusCode, duration)
         }</span>)
@@ -516,18 +596,18 @@ type responseWriter struct {
         statusCode int
 }
 
-func (rw *responseWriter) WriteHeader(code int) <span class="cov0" title="0">{
+func (rw *responseWriter) WriteHeader(code int) <span class="cov8" title="3">{
         rw.statusCode = code
         rw.ResponseWriter.WriteHeader(code)
 }</span>
 
-func parseStatusCode(code string) int <span class="cov8" title="1">{
+func parseStatusCode(code string) int <span class="cov10" title="4">{
         var statusCode int
         _, err := fmt.Sscanf(code, "%d", &amp;statusCode)
-        if err != nil </span><span class="cov8" title="1">{
+        if err != nil </span><span class="cov5" title="2">{
                 return 200
         }</span>
-        <span class="cov8" title="1">return statusCode</span>
+        <span class="cov5" title="2">return statusCode</span>
 }
 </pre>
 		

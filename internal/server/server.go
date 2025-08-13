@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -22,6 +23,9 @@ type Server struct {
 	server     *http.Server
 	corsCfg    *CORSConfig
 	maxReqSize int64
+	cache      *sync.Map
+	routes     []parser.Route
+	routeMap   map[string][]parser.Route
 }
 
 type CORSConfig struct {
@@ -34,17 +38,27 @@ type CORSConfig struct {
 }
 
 func New(specFile, host, port string) (*Server, error) {
-	parser, err := parser.New(specFile)
+	p, err := parser.New(specFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse OpenAPI spec: %w", err)
 	}
 
+	// Pre-build routes and route map
+	routes := p.GetRoutes()
+	routeMap := make(map[string][]parser.Route)
+	for _, route := range routes {
+		routeMap[route.Path] = append(routeMap[route.Path], route)
+	}
+
 	return &Server{
-		parser:     parser,
+		parser:     p,
 		host:       host,
 		port:       port,
 		corsCfg:    defaultCORSConfig(),
 		maxReqSize: 10 * 1024 * 1024, // 10MB default limit
+		cache:      &sync.Map{},
+		routes:     routes,
+		routeMap:   routeMap,
 	}, nil
 }
 
@@ -61,15 +75,8 @@ func defaultCORSConfig() *CORSConfig {
 
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
-	routes := s.parser.GetRoutes()
 
-	// Group routes by path to handle method-based routing
-	routeMap := make(map[string][]parser.Route)
-	for _, route := range routes {
-		routeMap[route.Path] = append(routeMap[route.Path], route)
-	}
-
-	for path, routes := range routeMap {
+	for path, routes := range s.routeMap {
 		s.registerRoute(mux, path, routes)
 	}
 
@@ -97,9 +104,11 @@ func (s *Server) Start() error {
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
+		// Optimized settings for better performance
+		MaxHeaderBytes: 1 << 20, // 1MB max header size
 	}
 
-	log.Printf("Registered %d routes", len(routes))
+	log.Printf("Registered %d routes", len(s.routes))
 
 	// Graceful shutdown
 	go func() {
@@ -132,34 +141,44 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 		muxPath = "/pets/"
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		// Find the route that matches the request method
-		var matchedRoute *parser.Route
-		for _, route := range routes {
-			if route.Method == r.Method {
-				matchedRoute = &route
-				break
-			}
-		}
+	// Pre-compute supported methods for this path
+	methods := make([]string, 0, len(routes))
+	for _, route := range routes {
+		methods = append(methods, route.Method)
+	}
 
-		if matchedRoute == nil {
+	// Create a fast lookup map for routes
+	routeLookup := make(map[string]*parser.Route, len(routes))
+	for i := range routes {
+		routeLookup[routes[i].Method] = &routes[i]
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		// Fast path: check if method exists
+		matchedRoute, exists := routeLookup[r.Method]
+		if !exists {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusMethodNotAllowed)
-
-			// List supported methods
-			methods := make([]string, 0, len(routes))
-			for _, route := range routes {
-				methods = append(methods, route.Method)
-			}
-
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   fmt.Sprintf("Method %s not allowed", r.Method),
 				"methods": methods,
 			})
 			return
 		}
 
-		// Check for status code override
+		// Cache key for response
+		cacheKey := r.Method + ":" + path + ":" + r.URL.Query().Get("__statusCode")
+
+		// Try to get from cache
+		if cached, ok := s.cache.Load(cacheKey); ok {
+			if response, ok := cached.(cachedResponse); ok {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(response.StatusCode)
+				w.Write(response.Body)
+				return
+			}
+		}
+
 		statusCode := "200"
 		if override := r.URL.Query().Get("__statusCode"); override != "" {
 			statusCode = override
@@ -167,55 +186,70 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 
 		example, err := s.parser.GetExampleResponse(matchedRoute.Operation, statusCode)
 		if err != nil {
-			// Try to find a 2xx response if the requested status code doesn't have an example
+			// Fast path: check for 2xx responses
 			found := false
 			for code := range matchedRoute.Operation.Responses.Map() {
 				if strings.HasPrefix(code, "2") {
-					example, err = s.parser.GetExampleResponse(matchedRoute.Operation, code)
-					if err == nil {
+					if example, err = s.parser.GetExampleResponse(matchedRoute.Operation, code); err == nil {
 						statusCode = code
 						found = true
 						break
 					}
 				}
 			}
-
 			if !found {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(map[string]string{
+				_ = json.NewEncoder(w).Encode(map[string]string{
 					"error": fmt.Sprintf("No example found for status code %s", statusCode),
 				})
 				return
 			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(parseStatusCode(statusCode))
-		json.NewEncoder(w).Encode(example)
-	}
+		// Serialize response
+		buf, err := json.Marshal(example)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "Failed to serialize response",
+			})
+			return
+		}
 
-	methods := make([]string, 0, len(routes))
-	for _, route := range routes {
-		methods = append(methods, route.Method)
+		status := parseStatusCode(statusCode)
+
+		// Cache the response
+		s.cache.Store(cacheKey, cachedResponse{
+			StatusCode: status,
+			Body:       buf,
+		})
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		w.Write(buf)
 	}
 
 	log.Printf("Registered route: %s %s", strings.Join(methods, ","), path)
 	mux.HandleFunc(muxPath, handler)
 }
 
-func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
-	routes := s.parser.GetRoutes()
+type cachedResponse struct {
+	StatusCode int
+	Body       []byte
+}
 
+func (s *Server) serveDocumentation(w http.ResponseWriter, _ *http.Request) {
 	doc := struct {
 		Message string              `json:"message"`
 		Routes  []map[string]string `json:"routes"`
 	}{
 		Message: "Go-Spec-Mock is running!",
-		Routes:  make([]map[string]string, 0, len(routes)),
+		Routes:  make([]map[string]string, 0, len(s.routes)),
 	}
 
-	for _, route := range routes {
+	for _, route := range s.routes {
 		doc.Routes = append(doc.Routes, map[string]string{
 			"method": route.Method,
 			"path":   route.Path,
@@ -223,7 +257,7 @@ func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(doc)
+	_ = json.NewEncoder(w).Encode(doc)
 }
 
 func (s *Server) applyMiddleware(handler http.Handler) http.Handler {

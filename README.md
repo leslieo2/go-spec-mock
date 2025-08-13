@@ -1,125 +1,153 @@
+<div align="center">
+
 # Go-Spec-Mock
 
-A lightweight, specification-first Go API mock server that generates realistic responses from OpenAPI 3.0 specifications.
+**A lightweight, specification-first Go API mock server.**
 
-## 🚀 Quick Start
+*Generate realistic mock responses directly from your OpenAPI 3.0 specifications. No code generation, no complex setup—just a single command.*
+
+</div>
+
+<p align="center">
+  <a href="https://github.com/leslieo2/go-spec-mock/actions/workflows/ci.yml"><img src="https://github.com/leslieo2/go-spec-mock/actions/workflows/ci.yml/badge.svg" alt="Build Status"></a>
+  <a href="https://goreportcard.com/report/github.com/leslieo2/go-spec-mock"><img src="https://goreportcard.com/badge/github.com/leslieo2/go-spec-mock" alt="Go Report Card"></a>
+  <a href="https://github.com/leslieo2/go-spec-mock/releases"><img src="https://img.shields.io/github/v/release/leslieo2/go-spec-mock" alt="Latest Release"></a>
+  <a href="https://github.com/leslieo2/go-spec-mock/blob/main/LICENSE"><img src="https://img.shields.io/github/license/leslieo2/go-spec-mock" alt="License"></a>
+</p>
+
+---
+
+## ✨ Key Features
+
+*   **🚀 Specification-First:** Instantly mock any API by providing an OpenAPI 3.0 (YAML/JSON) file.
+*   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
+*   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
+*   **🔧 Developer-Friendly:** Simple CLI, seamless integration with tools like [Insomnia](https://insomnia.rest/), and a comprehensive set of utility endpoints.
+*   **🏢 Enterprise-Ready:** Built with a clean, testable, and performant Go architecture.
+
+## 📖 Table of Contents
+
+- [🚀 Getting Started](#-getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Quick Usage](#quick-usage)
+- [📖 Usage Guide](#-usage-guide)
+    - [Basic Workflow](#basic-workflow)
+    - [Insomnia Integration](#insomnia-integration)
+- [⚙️ Configuration](#️-configuration)
+    - [CLI Flags](#cli-flags)
+    - [Dynamic Status Code Selection](#dynamic-status-code-selection)
+- [🐳 Docker Usage](#-docker-usage)
+- [👨‍💻 Development & Contribution](#-development--contribution)
+    - [Setup](#setup)
+    - [Development Commands](#development-commands)
+    - [Project Structure](#project-structure)
+- [🛣️ Roadmap](#️-roadmap)
+- [🙏 Acknowledgments](#-acknowledgments)
+- [📄 License](#-license)
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Go](https://go.dev/doc/install) version 1.21 or later.
 
 ### Installation
+
+Install the `go-spec-mock` CLI with a single command:
 
 ```bash
 go install github.com/leslieo2/go-spec-mock@latest
 ```
 
-### Usage
+### Quick Usage
 
-```bash
-# Start mocking from an OpenAPI spec
-go-spec-mock ./examples/petstore.yaml
+1.  Point `go-spec-mock` to your OpenAPI specification file.
 
-# Start on custom host and port
-go-spec-mock ./examples/petstore.yaml -host 0.0.0.0 -port 8080
-```
+    ```bash
+    # Start mocking using the example Petstore spec
+    go-spec-mock ./examples/petstore.yaml
+    ```
 
-## 🎯 Motivation
+2.  You'll see output indicating the server is running and which routes are available:
+    ```
+    2023/10/27 10:00:00 Starting server on http://127.0.0.1:8080
+    2023/10/27 10:00:00 ----------------------------------------
+    2023/10/27 10:00:00 Registered Route: GET /
+    2023/10/27 10:00:00 Registered Route: GET /health
+    2023/10/27 10:00:00 Registered Route: GET /pets
+    2023/10/27 10:00:00 Registered Route: POST /pets
+    2023/10/27 10:00:00 Registered Route: GET /pets/{petId}
+    2023/10/27 10:00:00 Registered Route: DELETE /pets/{petId}
+    2023/10/27 10:00:00 ----------------------------------------
+    ```
 
-While Go has powerful OpenAPI code generation tools, it lacked a simple, standalone API mock server like [Prism](https://github.com/stoplight/prism) (TypeScript) or [MockServer](https://github.com/mock-server/mockserver) (Java) that can be started with a single command from an OpenAPI specification.
-
-**Go-Spec-Mock** fills this gap by providing a:
-- **Zero-dependency** single binary solution
-- **Cross-platform** mock server
-- **Insomnia workflow** integration
-- **Enterprise-grade** Go implementation
-
-## ✨ Features
-
-### ✅ Core Features (Complete)
-- **CLI Interface**: Simple command-line usage with flags support
-- **OpenAPI 3.0 Support**: Full parsing of YAML/JSON specs using kin-openapi
-- **HTTP Server**: Built with Go's standard library `net/http`
-- **Dynamic Routing**: Automatic route registration with path parameter support
-- **Static Responses**: Returns examples defined in OpenAPI specifications
-- **Method-based Routing**: Proper HTTP method handling (GET, POST, DELETE, etc.)
-
-### ✅ Advanced Features (Complete)
-- **Dynamic Status Code Selection**: Override response codes via `__statusCode` query parameter
-- **Path Parameter Support**: Handles OpenAPI path parameters like `{petId}`
-- **Comprehensive Testing**: Unit tests for parser and server components
-- **Insomnia Integration**: Complete workflow integration documented
-- **Zero Dependencies**: Single binary with no runtime dependencies
-- **Cross-platform**: Works on Linux, macOS, and Windows
+3.  In another terminal, test an endpoint using `curl`:
+    ```bash
+    # Get a list of all pets
+    curl http://localhost:8080/pets
+    
+    # Get a specific pet by its ID
+    curl http://localhost:8080/pets/123
+    ```
 
 ## 📖 Usage Guide
 
-### Basic Usage
+### Basic Workflow
 
-1. **Get an OpenAPI specification**:
-   - Export from [Insomnia](https://insomnia.rest/)
-   - Download from [Swagger Petstore](https://petstore3.swagger.io/api/v3/openapi.json)
-   - Write your own
+1.  **Get an OpenAPI Spec:** Create your own, or download one like the [Swagger Petstore](https://petstore3.swagger.io/api/v3/openapi.json) spec.
+2.  **Start the Mock Server:**
+    ```bash
+    go-spec-mock /path/to/your/api-spec.yaml
+    ```
+3.  **Test Your Endpoints:** Use any HTTP client to interact with your mock API.
+    ```bash
+    # List all pets
+    curl http://localhost:8080/pets
 
-2. **Start the mock server**:
-   ```bash
-   go-spec-mock ./your-api-spec.yaml
-   ```
+    # Create a pet
+    curl -X POST http://localhost:8080/pets
 
-3. **Test your endpoints with curl**:
-   ```bash
-   # Start the server
-   ./go-spec-mock ./examples/petstore.yaml -port 8080
-   
-   # In another terminal, test with curl:
-   curl http://localhost:8080/
-   curl http://localhost:8080/health
-   curl http://localhost:8080/pets
-   curl http://localhost:8080/pets/123
-   curl -X POST http://localhost:8080/pets
-   curl -X DELETE http://localhost:8080/pets/123
-   ```
+    # Delete a pet
+    curl -X DELETE http://localhost:8080/pets/123
+    ```
 
 ### Insomnia Integration
 
-#### Exporting OpenAPI from Insomnia
+`go-spec-mock` is perfect for a design-first workflow with Insomnia.
 
-1. **Design your API in Insomnia Designer**
-   - Create your API endpoints in Insomnia's design mode
-   - Add schemas, examples, and documentation
+1.  **Design API in Insomnia:** Create your endpoints, schemas, and examples in Insomnia's "Design" tab.
+2.  **Export Spec:** Click the collection dropdown, then select **Export** -> **OpenAPI 3.0** (as YAML or JSON). Save it as `api-spec.yaml`.
+3.  **Start Mocking:**
+    ```bash
+    go-spec-mock ./api-spec.yaml
+    ```
+4.  **Test:** Point your frontend application or Insomnia's "Debug" tab to `http://localhost:8080` to test against the live mock server.
 
-2. **Export OpenAPI 3.0 specification**:
-   - Click the "Design" tab in Insomnia
-   - Click the "..." menu next to your API
-   - Select "Export" → "OpenAPI 3.0" → "YAML"
-   - Save the file as `api-spec.yaml`
+## ⚙️ Configuration
 
-3. **Start mocking immediately**:
-   ```bash
-   go-spec-mock ./api-spec.yaml
-   ```
+### CLI Flags
 
-#### Complete Workflow Example
+Customize the server with the following flags:
+
+| Flag        | Description                      | Default       |
+|-------------|----------------------------------|---------------|
+| `-host`     | The host to bind the server to.  | `127.0.0.1`   |
+| `-port`     | The port to run the server on.   | `8080`        |
+
+**Example:**
 
 ```bash
-# 1. Design API in Insomnia
-# 2. Export to api-spec.yaml
-# 3. Start mock server
-go-spec-mock ./api-spec.yaml
-
-# 4. Test your frontend against the mock
-curl http://localhost:8080/api/v1/users
-# Returns: {"id": 1, "name": "John Doe", "email": "john@example.com"}
-
-# 5. Test error scenarios
-curl "http://localhost:8080/api/v1/users/999?__statusCode=404"
-# Returns: {"error": "User not found"}
+# Run on all network interfaces on port 3000
+go-spec-mock ./api-spec.yaml -host 0.0.0.0 -port 3000
 ```
-
-## 🔧 Advanced Usage
 
 ### Dynamic Status Code Selection
 
-Override the response status code using the `__statusCode` query parameter:
+Test different response scenarios by overriding the status code with the `__statusCode` query parameter. The server will look for a matching response example in your spec.
 
 ```bash
-# Get a 200 OK response
+# Get the default 200 OK response
 curl http://localhost:8080/pets/1
 
 # Force a 404 Not Found response
@@ -129,194 +157,115 @@ curl "http://localhost:8080/pets/1?__statusCode=404"
 curl "http://localhost:8080/pets?__statusCode=400"
 ```
 
-### Custom Host and Port
+## 🐳 Docker Usage
+
+A `Dockerfile` is included for easy containerization.
 
 ```bash
-# Run on all interfaces
-./go-spec-mock ./examples/petstore.yaml -host 0.0.0.0 -port 3000
+# 1. Build the Docker image
+docker build -t go-spec-mock .
 
-# Run on custom port
-./go-spec-mock ./examples/petstore.yaml -port 9000
+# 2. Run the container, mounting your spec file
+# Note: The spec path is relative to the container's /app directory
+docker run -p 8080:8080 \
+  -v $(pwd)/examples:/app/examples \
+  go-spec-mock:latest ./examples/petstore.yaml
 ```
 
-## 📋 API Endpoints
+## 👨‍💻 Development & Contribution
 
-When running the mock server, these endpoints are automatically available:
+Contributions are welcome! Please feel free to open an issue or submit a pull request.
 
-### Mock Endpoints
-- **GET** `/pets` - List all pets
-- **POST** `/pets` - Create a new pet
-- **GET** `/pets/{petId}` - Get pet by ID
-- **DELETE** `/pets/{petId}` - Delete pet by ID
+### Setup
 
-### Utility Endpoints
-- **GET** `/` - API documentation and route listing
-- **GET** `/health` - Health check endpoint
-
-## 🧪 Development
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/leslieo2/go-spec-mock.git
+    cd go-spec-mock
+    ```
+2.  Install dependencies:
+    ```bash
+    go mod tidy
+    ```
 
 ### Development Commands
 
-```bash
-# Clone and build
-git clone https://github.com/leslieo2/go-spec-mock.git
-cd go-spec-mock
-make build                    # Build the binary
+This project uses a `Makefile` to streamline common development tasks.
 
-# Development workflow
-make test                     # Run all tests
-make fmt                      # Format code
-make lint                     # Run linting (requires golangci-lint)
-make ci                       # Full CI pipeline
-make run-example              # Run with petstore example
-
-# Quick curl testing
-make curl-test               # Automated curl tests
-make curl-interactive        # Interactive curl testing
-
-# Cross-platform builds
-make build-all                # Build for Linux, macOS, Windows
-```
+| Command              | Description                                            |
+|----------------------|--------------------------------------------------------|
+| `make build`         | Build the `go-spec-mock` binary for your OS.           |
+| `make run-example`   | Run the server with the example `petstore.yaml` spec.  |
+| `make test`          | Run all unit tests.                                    |
+| `make fmt`           | Format the Go source code.                             |
+| `make lint`          | Run `golangci-lint` to check for code quality issues.  |
+| `make ci`            | Run the full CI pipeline (format, lint, test).         |
+| `make build-all`     | Cross-compile binaries for Linux, macOS, and Windows.  |
+| `make curl-test`     | Run automated `curl` tests against the example server. |
 
 ### Project Structure
 
 ```
-go-spec-mock/
-├── main.go                 # CLI entry point
-├── Makefile               # Build and development commands
-├── go.mod                 # Go module definition
-├── internal/
-│   ├── server/
-│   │   ├── server.go      # HTTP server implementation
-│   │   └── server_test.go # Server unit tests
-│   └── parser/
-│       ├── parser.go      # OpenAPI spec parser
-│       └── parser_test.go # Parser unit tests
+.
+├── Makefile              # Development commands
+├── README.md             # This file
+├── go.mod                # Go module definition
+├── main.go               # CLI entry point
 ├── examples/
-│   └── petstore.yaml      # Sample OpenAPI spec (Swagger Petstore)
-├── README.md              # Comprehensive documentation
-└── go-spec-mock           # Built binary (after make build)
+│   └── petstore.yaml     # Sample OpenAPI spec
+└── internal/
+    ├── parser/           # OpenAPI specification parsing logic
+    └── server/           # HTTP server and routing logic
 ```
 
-## 🛠️ Technical Details
+## 🛣️ Roadmap
 
-### Architecture
+The project is currently at **v1.0.0** and is stable for general use. The future roadmap is focused on adding enterprise-grade features for security, observability, and configuration.
 
-- **Language**: Go 1.21+
-- **OpenAPI Parser**: [kin-openapi](https://github.com/getkin/kin-openapi)
-- **HTTP Server**: Go standard library `net/http`
-- **CLI**: Simple flag-based interface
+<details>
+<summary><strong>✅ Phase 1: Core Features (Complete)</strong></summary>
 
-### Performance
+- [x] OpenAPI 3.0 specification parsing
+- [x] Dynamic HTTP routing from spec paths
+- [x] Static example response generation
+- [x] Dynamic status code override (`__statusCode`)
+- [x] Cross-platform builds (Linux, macOS, Windows)
+- [x] Comprehensive unit tests and documentation
 
-- **Memory Efficient**: Minimal memory footprint
-- **Fast Startup**: Typical startup time < 1 second
-- **Zero Dependencies**: Single binary, no runtime dependencies
-- **Linting**: Clean codebase passing all Go linting tools
+</details>
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 🎯 Project Status
-
-**✅ v1.0.0 RELEASED** - Core features complete and tested!
-
-Current release includes:
-- Clean architecture following best practices
-- Comprehensive test coverage
-- Production-ready core features
-- Excellent documentation
-- Zero external runtime dependencies
-
-**🚀 Enterprise features in development** - see roadmap below
-
-## 🎯 Enterprise Implementation Roadmap
-
-### ✅ Phase 1: Core Features (Completed)
-- ✅ OpenAPI 3.0 specification parsing
-- ✅ Dynamic HTTP routing
-- ✅ Example response generation
-- ✅ Status code override
-- ✅ Cross-platform builds
-- ✅ Professional documentation
-
-### 📋 Phase 2: Enterprise Enhancements (Planned)
+<details>
+<summary><strong>📋 Phase 2: Enterprise Enhancements (Planned)</strong></summary>
 
 #### 🔒 Security & Robustness
-- [ ] **Request size limits** - Prevent large file attacks
-- [ ] **Log level control** - Support DEBUG/INFO/WARN/ERROR
-- [ ] **Sensitive data masking** - Protect API keys and sensitive data
+- [ ] Request size limiting
+- [ ] Configurable log levels (DEBUG, INFO, WARN, ERROR)
+- [ ] Sensitive data masking in logs
 
 #### 📊 Observability
-- [ ] **Structured logging** - JSON format logs, ELK stack support
-- [ ] **Performance metrics** - Prometheus metrics collection
-- [ ] **Distributed tracing** - Request trace IDs
-- [ ] **Enhanced health checks** - Detailed status endpoints
+- [ ] Structured (JSON) logging
+- [ ] Prometheus metrics endpoint (`/metrics`)
+- [ ] Distributed tracing support (e.g., Trace-ID headers)
 
-#### 🛡️ Security Enhancements
-- [ ] **CORS configuration** - Cross-origin request handling
-- [ ] **Rate limiting** - Prevent API abuse
-- [ ] **API key authentication** - Basic auth support
-- [ ] **HTTPS support** - TLS configuration
-- [ ] **Enhanced input validation** - Deep request validation
+#### 🛡️ Advanced Configuration
+- [ ] CORS (Cross-Origin Resource Sharing) configuration
+- [ ] Rate limiting
+- [ ] Basic API key authentication
+- [ ] HTTPS/TLS support
+- [ ] Configuration via environment variables or a config file
 
-#### 🔧 Configuration Management
-- [ ] **Configuration files** - YAML/JSON config files
-- [ ] **Environment variables** - 12-factor app support
-- [ ] **Hot configuration reload** - Runtime config updates
-- [ ] **Configuration validation** - Startup config checks
+#### 📦 Deployment
+- [ ] Official Docker images on Docker Hub
+- [ ] Example Helm charts for Kubernetes deployment
 
-#### 📈 Performance Optimization
-- [ ] **Connection pool management** - HTTP connection optimization
-- [ ] **Caching mechanisms** - Response caching
-- [ ] **Compression support** - Gzip compression
-- [ ] **Concurrency limits** - Connection count control
-
-#### 🧪 Testing Completeness
-- [ ] **Integration tests** - End-to-end test suite
-- [ ] **Load testing** - Performance testing support
-- [ ] **Mock testing** - Test isolation
-- [ ] **Fuzz testing** - Input boundary testing
-
-#### 📦 Deliverables
-- [ ] **Docker images** - Containerization support
-- [ ] **Helm charts** - Kubernetes deployment
-- [ ] **Sample configurations** - Production config templates
-- [ ] **Monitoring alerts** - Prometheus rules
-
-## 🐳 Docker Usage
-
-```bash
-# Build Docker image
-make docker
-
-# Run with Docker
-docker run -p 8080:8080 go-spec-mock:latest ./examples/petstore.yaml
-
-# Run with custom port
-docker run -p 3000:8080 go-spec-mock:latest ./examples/petstore.yaml -port 8080
-```
-
-## 🚀 How to Contribute Enterprise Features
-
-```bash
-# View all available commands
-make help
-
-# Development workflow
-make dev                    # Start development server
-make test                   # Run tests
-make ci                     # Full CI pipeline
-make curl-test              # Test endpoints
-```
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
+</details>
 
 ## 🙏 Acknowledgments
 
-- [kin-openapi](https://github.com/getkin/kin-openapi) for OpenAPI 3.0 parsing
-- [Insomnia](https://insomnia.rest/) for inspiration and workflow integration
-- Go standard library for robust HTTP server implementation
+-   **[kin-openapi](https://github.com/getkin/kin-openapi)** for its robust OpenAPI 3.0 parsing library.
+-   **[Insomnia](https://insomnia.rest/)** for inspiring a seamless design-first workflow.
+-   The **Go Team** for the powerful and simple standard library.
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

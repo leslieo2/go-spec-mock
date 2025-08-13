@@ -83,7 +83,10 @@ func (s *Server) Start() error {
 	// Add health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			log.Printf("Error encoding health response: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 	})
 
 	// Add documentation endpoint
@@ -174,7 +177,10 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 			if response, ok := cached.(cachedResponse); ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(response.StatusCode)
-				w.Write(response.Body)
+				if _, err := w.Write(response.Body); err != nil {
+					log.Printf("Error writing cached response: %v", err)
+					// Optionally, handle this error more gracefully, e.g., by returning a 500
+				}
 				return
 			}
 		}
@@ -228,7 +234,10 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
-		w.Write(buf)
+		if _, err := w.Write(buf); err != nil {
+			log.Printf("Error writing response: %v", err)
+			// Optionally, handle this error more gracefully, e.g., by returning a 500
+		}
 	}
 
 	log.Printf("Registered route: %s %s", strings.Join(methods, ","), path)
@@ -321,9 +330,11 @@ func (s *Server) requestSizeLimitMiddleware(next http.Handler) http.Handler {
 		if s.maxReqSize > 0 && r.ContentLength > s.maxReqSize {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
-			json.NewEncoder(w).Encode(map[string]string{
+			if err := json.NewEncoder(w).Encode(map[string]string{
 				"error": fmt.Sprintf("Request body too large, max size: %d bytes", s.maxReqSize),
-			})
+			}); err != nil {
+				log.Printf("Error encoding request size limit response: %v", err)
+			}
 			return
 		}
 		next.ServeHTTP(w, r)

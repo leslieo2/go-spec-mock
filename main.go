@@ -20,7 +20,9 @@ func main() {
 	port := flag.String("port", "8080", "Port to run the mock server on")
 	host := flag.String("host", "localhost", "Host to run the mock server on")
 
-	flag.CommandLine.Parse(os.Args[2:])
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatalf("Failed to parse flags: %v", err)
+	}
 
 	if _, err := os.Stat(specFile); os.IsNotExist(err) {
 		log.Fatalf("OpenAPI spec file not found: %s", specFile)

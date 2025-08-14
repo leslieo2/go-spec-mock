@@ -151,8 +151,8 @@ The server provides built-in observability endpoints:
 # Check health status
 curl http://localhost:8080/health
 
-# View Prometheus metrics
-curl http://localhost:8080/metrics
+# View Prometheus metrics,5 secs
+curl --max-time 5 http://localhost:8080/metrics
 
 # Check readiness
 curl http://localhost:8080/ready

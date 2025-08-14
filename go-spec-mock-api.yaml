@@ -1,0 +1,555 @@
+openapi: 3.0.3
+info:
+  title: Go-Spec-Mock Enterprise API Server
+  description: |
+    A high-performance, production-ready OpenAPI mock server with comprehensive observability,
+    caching, and enterprise-grade features. This server automatically generates mock responses
+    from OpenAPI 3.x specifications with support for dynamic status codes, response caching,
+    and detailed monitoring.
+  
+    ## Features
+    - **Dynamic Mock Generation**: Automatically generates realistic mock data from OpenAPI specs
+    - **Response Caching**: Intelligent caching for improved performance
+    - **Observability**: Built-in health checks, metrics, and distributed tracing
+    - **Status Code Override**: Support for testing different response scenarios via query parameters
+    - **CORS Support**: Configurable CORS for web applications
+    - **Request Validation**: Input validation with detailed error responses
+    - **Production Ready**: Enterprise-grade logging and monitoring
+  
+    ## Authentication
+    This mock server does not require authentication. However, you can use the `Authorization`
+    header in your requests to simulate authenticated endpoints.
+  
+    ## Rate Limiting
+    Currently, there are no rate limits on the mock server. Use responsibly for testing purposes.
+  
+    ## Response Customization
+    Use the `__statusCode` query parameter to override the default response status code:
+    ```
+    GET /api/users?__statusCode=404
+    ```
+  
+  version: 1.0.0
+  contact:
+    name: Go-Spec-Mock Team
+    url: https://github.com/leslieo2/go-spec-mock
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: http://localhost:9090
+    description: Metrics server
+
+externalDocs:
+  description: GitHub Repository
+  url: https://github.com/leslieo2/go-spec-mock
+
+paths:
+  /:
+    get:
+      tags:
+        - System
+      summary: Get API documentation
+      description: Returns comprehensive documentation about all available endpoints and system information
+      operationId: getDocumentation
+      responses:
+        '200':
+          description: API documentation and system information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Documentation'
+              example:
+                message: "Go-Spec-Mock Enterprise API Server"
+                version: "1.0.0"
+                environment: "production"
+                endpoints:
+                  - method: "GET"
+                    path: "/pets"
+                    description: "Find pets by status"
+                  - method: "POST"
+                    path: "/pets"
+                    description: "Add a new pet"
+                observability:
+                  health: "/health"
+                  metrics: "/metrics"
+                  readiness: "/ready"
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns detailed health information about the server including uptime and component status
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: "healthy"
+                timestamp: "2024-01-15T10:30:00Z"
+                version: "1.0.0"
+                uptime: "2h15m30s"
+                checks:
+                  parser: true
+                  routes: true
+        '503':
+          description: Server is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Service unavailable"
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check endpoint
+      description: Determines if the server is ready to accept traffic based on OpenAPI spec loading status
+      operationId: readinessCheck
+      responses:
+        '200':
+          description: Server is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ready"
+        '503':
+          description: Server is not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "not ready"
+
+  /metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Prometheus metrics endpoint
+      description: Returns server metrics in Prometheus format for monitoring and alerting
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP http_requests_total Total number of HTTP requests
+                  # TYPE http_requests_total counter
+                  http_requests_total{method="GET",path="/health",status="200"} 42
+                  # HELP http_request_duration_seconds HTTP request duration in seconds
+                  # TYPE http_request_duration_seconds histogram
+                  http_request_duration_seconds_bucket{method="GET",path="/health",le="0.1"} 42
+
+  /{path}:
+    get:
+      tags:
+        - Mock
+      summary: Dynamic GET endpoint
+      description: |
+        Dynamic GET endpoint that generates mock responses based on the OpenAPI specification.
+        The actual behavior depends on the loaded OpenAPI spec and the provided path.
+      operationId: dynamicGet
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API path to mock
+        - name: __statusCode
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 599
+          description: Override the response status code for testing
+      responses:
+        '200':
+          description: Successful mock response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Endpoint or example not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Mock
+      summary: Dynamic POST endpoint
+      description: Dynamic POST endpoint for creating resources
+      operationId: dynamicPost
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API path to mock
+        - name: __statusCode
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 599
+          description: Override the response status code for testing
+      requestBody:
+        description: Request body for POST operation
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful mock response
+          content:
+            application/json:
+              schema:
+                type: object
+        '201':
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Mock
+      summary: Dynamic PUT endpoint
+      description: Dynamic PUT endpoint for updating resources
+      operationId: dynamicPut
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API path to mock
+        - name: __statusCode
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 599
+          description: Override the response status code for testing
+      requestBody:
+        description: Request body for PUT operation
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful mock response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Mock
+      summary: Dynamic DELETE endpoint
+      description: Dynamic DELETE endpoint for deleting resources
+      operationId: dynamicDelete
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API path to mock
+        - name: __statusCode
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 599
+          description: Override the response status code for testing
+      responses:
+        '204':
+          description: Successfully deleted
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Mock
+      summary: Dynamic PATCH endpoint
+      description: Dynamic PATCH endpoint for partial updates
+      operationId: dynamicPatch
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API path to mock
+        - name: __statusCode
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 599
+          description: Override the response status code for testing
+      requestBody:
+        description: Request body for PATCH operation
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful mock response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Documentation:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Welcome message
+          example: "Go-Spec-Mock Enterprise API Server"
+        version:
+          type: string
+          description: API version
+          example: "1.0.0"
+        environment:
+          type: string
+          description: Deployment environment
+          example: "production"
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteInfo'
+        observability:
+          type: object
+          properties:
+            health:
+              type: string
+              example: "/health"
+            metrics:
+              type: string
+              example: "/metrics"
+            readiness:
+              type: string
+              example: "/ready"
+
+    RouteInfo:
+      type: object
+      properties:
+        method:
+          type: string
+          description: HTTP method
+          example: "GET"
+        path:
+          type: string
+          description: API endpoint path
+          example: "/api/v1/users"
+        description:
+          type: string
+          description: Brief description of the endpoint
+          example: "Get all users"
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Overall health status
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          description: Time of health check
+          example: "2024-01-15T10:30:00Z"
+        version:
+          type: string
+          description: Server version
+          example: "1.0.0"
+        uptime:
+          type: string
+          description: Server uptime in human-readable format
+          example: "2h15m30s"
+        checks:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: Component health checks
+          example:
+            parser: true
+            routes: true
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Resource not found"
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+          example:
+            path: "/api/users/123"
+            method: "GET"
+
+    MethodNotAllowed:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Method PATCH not allowed"
+        methods:
+          type: array
+          items:
+            type: string
+          description: Allowed HTTP methods
+          example: ["GET", "POST", "PUT", "DELETE"]
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  parameters:
+    StatusCodeParam:
+      name: __statusCode
+      in: query
+      description: Override response status code for testing
+      schema:
+        type: integer
+        minimum: 100
+        maximum: 599
+        example: 404
+
+  headers:
+    X-Response-Time:
+      description: Response time in milliseconds
+      schema:
+        type: integer
+        example: 150
+    X-Cache-Status:
+      description: Cache status (HIT/MISS)
+      schema:
+        type: string
+        enum: [HIT, MISS]
+        example: HIT
+
+tags:
+  - name: System
+    description: System information and documentation endpoints
+  - name: Health
+    description: Health check and monitoring endpoints
+  - name: Monitoring
+    description: Metrics and observability endpoints
+  - name: Mock
+    description: Dynamic mock endpoints generated from OpenAPI specifications
+
+x-tagGroups:
+  - name: System Management
+    tags:
+      - System
+      - Health
+      - Monitoring
+  - name: Mock APIs
+    tags:
+      - Mock

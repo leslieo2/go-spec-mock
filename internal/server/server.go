@@ -106,18 +106,20 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/metrics", s.metricsHandler)
 	mux.HandleFunc("/ready", s.readinessHandler)
 
-	// Add documentation endpoint
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			s.serveDocumentation(w, r)
-		} else {
-			http.NotFound(w, r)
-		}
-	})
-
-	// Register OpenAPI routes
+	// Register OpenAPI routes first
 	for path, routes := range s.routeMap {
 		s.registerRoute(mux, path, routes)
+	}
+
+	// Add documentation endpoint only if no root route is defined in OpenAPI
+	if _, exists := s.routeMap["/"]; !exists {
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" {
+				s.serveDocumentation(w, r)
+			} else {
+				http.NotFound(w, r)
+			}
+		})
 	}
 
 	// Apply middleware chain

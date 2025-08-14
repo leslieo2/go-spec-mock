@@ -63,10 +63,14 @@ func (p *Parser) preGenerateExamples(operation *openapi3.Operation) {
 		return
 	}
 
-	// Pre-generate for common status codes
-	commonCodes := []string{"200", "201", "400", "401", "403", "404", "500"}
-	for _, code := range commonCodes {
-		if _, exists := operation.Responses.Map()[code]; exists {
+	// Common status codes as set for O(1) lookup
+	commonCodes := map[string]struct{}{
+		"200": {}, "201": {}, "400": {}, "401": {}, "403": {}, "404": {}, "500": {},
+	}
+
+	// Get all response codes and only process common ones
+	for code := range operation.Responses.Map() {
+		if _, isCommon := commonCodes[code]; isCommon {
 			_, _ = p.GetExampleResponse(operation, code)
 		}
 	}

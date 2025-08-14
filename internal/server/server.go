@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -149,15 +150,14 @@ func (s *Server) Start() error {
 				Handler:           metricsMux,
 				ReadHeaderTimeout: 5 * time.Second,
 			}
-			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				s.logger.Logger.Error("Metrics server failed", zap.Error(err))
 			}
 		}()
 	}
 
-	// Graceful shutdown
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.logger.Logger.Fatal("Server failed to start", zap.Error(err))
 		}
 	}()
@@ -170,6 +170,7 @@ func (s *Server) Start() error {
 	s.logger.Logger.Info("Shutting down server...")
 	s.metrics.SetHealthStatus(false)
 
+	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -177,14 +178,9 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.Route) {
-	// Convert OpenAPI path parameters to Go http.ServeMux format
-	muxPath := strings.ReplaceAll(path, "{", "")
-	muxPath = strings.ReplaceAll(muxPath, "}", "")
-
-	// Handle path parameters - convert to wildcard for Go's ServeMux
-	if strings.Contains(muxPath, "petId") {
-		muxPath = "/pets/"
-	}
+	// With Go 1.22+, http.ServeMux supports path parameters in the {name} format,
+	// which is the same as the OpenAPI spec. We can use the path as is.
+	muxPath := path
 
 	// Pre-compute supported methods for this path
 	methods := make([]string, 0, len(routes))
@@ -217,134 +213,48 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 		// Fast path: check if method exists
 		matchedRoute, exists := routeLookup[r.Method]
 		if !exists {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-
-			response := map[string]interface{}{
-				"error":   fmt.Sprintf("Method %s not allowed", r.Method),
-				"methods": methods,
-			}
-
-			_ = json.NewEncoder(w).Encode(response)
-
-			s.metrics.RecordRequest(r.Method, path, http.StatusMethodNotAllowed,
-				time.Since(start), requestSize, 0)
-
-			s.logger.Logger.Warn("Method not allowed",
-				zap.String("method", r.Method),
-				zap.String("path", path),
-				zap.String("remote_addr", r.RemoteAddr),
-			)
+			s.sendMethodNotAllowedResponse(w, methods, r.Method)
+			s.recordRequestMetrics(r.Method, path, http.StatusMethodNotAllowed, time.Since(start), requestSize, 0)
+			s.logMethodNotAllowed(r.Method, path, r.RemoteAddr)
 			return
 		}
 
 		// Cache key for response
-		cacheKey := r.Method + ":" + path + ":" + r.URL.Query().Get("__statusCode")
+		cacheKey := s.generateCacheKey(r.Method, path, r)
 
 		// Try to get from cache
-		if cached, ok := s.cache.Load(cacheKey); ok {
-			if response, ok := cached.(cachedResponse); ok {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(response.StatusCode)
-				_, _ = w.Write(response.Body)
-
-				s.metrics.RecordRequest(r.Method, path, response.StatusCode,
-					time.Since(start), requestSize, int64(len(response.Body)))
-
-				s.logger.Logger.Debug("Served from cache",
-					zap.String("method", r.Method),
-					zap.String("path", path),
-					zap.Int("status_code", response.StatusCode),
-				)
-				return
-			}
-		}
-
-		statusCode := "200"
-		if override := r.URL.Query().Get("__statusCode"); override != "" {
-			statusCode = override
-		}
-
-		example, err := s.parser.GetExampleResponse(matchedRoute.Operation, statusCode)
-		if err != nil {
-			// Fast path: check for 2xx responses
-			found := false
-			for code := range matchedRoute.Operation.Responses.Map() {
-				if strings.HasPrefix(code, "2") {
-					if example, err = s.parser.GetExampleResponse(matchedRoute.Operation, code); err == nil {
-						statusCode = code
-						found = true
-						break
-					}
-				}
-			}
-			if !found {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusNotFound)
-
-				response := map[string]string{
-					"error": fmt.Sprintf("No example found for status code %s", statusCode),
-				}
-
-				_ = json.NewEncoder(w).Encode(response)
-
-				s.metrics.RecordRequest(r.Method, path, http.StatusNotFound,
-					time.Since(start), requestSize, 0)
-
-				s.logger.Logger.Warn("No example found",
-					zap.String("status_code", statusCode),
-					zap.String("path", path),
-				)
-				return
-			}
-		}
-
-		// Serialize response
-		buf, err := json.Marshal(example)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-
-			response := map[string]string{
-				"error": "Failed to serialize response",
-			}
-
-			_ = json.NewEncoder(w).Encode(response)
-
-			s.metrics.RecordRequest(r.Method, path, http.StatusInternalServerError,
-				time.Since(start), requestSize, 0)
-
-			s.logger.Logger.Error("Failed to serialize response",
-				zap.Error(err),
-				zap.String("path", path),
-			)
+		if cached, ok := s.getCachedResponse(cacheKey); ok {
+			s.sendJSONResponse(w, cached.StatusCode, cached.Body)
+			s.recordRequestMetrics(r.Method, path, cached.StatusCode, time.Since(start), requestSize, int64(len(cached.Body)))
+			s.logServedFromCache(r.Method, path, cached.StatusCode)
 			return
 		}
 
-		status := parseStatusCode(statusCode)
+		// Generate response
+		statusCode := s.getStatusCodeFromRequest(r)
+		buf, status, err := s.generateResponse(matchedRoute, statusCode)
+		if err != nil {
+			if strings.Contains(err.Error(), "no example found") {
+				s.sendErrorResponse(w, http.StatusNotFound, err.Error())
+				s.recordRequestMetrics(r.Method, path, http.StatusNotFound, time.Since(start), requestSize, 0)
+				s.logNoExampleFound(statusCode, path)
+			} else {
+				s.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+				s.recordRequestMetrics(r.Method, path, http.StatusInternalServerError, time.Since(start), requestSize, 0)
+				s.logSerializationError(err, path)
+			}
+			return
+		}
+
 		responseSize := int64(len(buf))
 
 		// Cache the response
-		s.cache.Store(cacheKey, cachedResponse{
-			StatusCode: status,
-			Body:       buf,
-		})
+		s.cacheResponse(cacheKey, status, buf)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		_, _ = w.Write(buf)
-
-		s.metrics.RecordRequest(r.Method, path, status,
-			time.Since(start), requestSize, responseSize)
-
-		s.logger.Logger.Debug("Request processed",
-			zap.String("method", r.Method),
-			zap.String("path", path),
-			zap.Int("status_code", status),
-			zap.Duration("duration", time.Since(start)),
-			zap.Int64("request_size", requestSize),
-			zap.Int64("response_size", responseSize),
-		)
+		// Send response
+		s.sendJSONResponse(w, status, buf)
+		s.recordRequestMetrics(r.Method, path, status, time.Since(start), requestSize, responseSize)
+		s.logRequestProcessed(r.Method, path, status, time.Since(start), requestSize, responseSize)
 	}
 
 	s.logger.Logger.Info("Registered route",
@@ -357,6 +267,27 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 type cachedResponse struct {
 	StatusCode int
 	Body       []byte
+}
+
+// CacheManager handles response caching operations
+func (s *Server) getCachedResponse(cacheKey string) (*cachedResponse, bool) {
+	if cached, ok := s.cache.Load(cacheKey); ok {
+		if response, ok := cached.(cachedResponse); ok {
+			return &response, true
+		}
+	}
+	return nil, false
+}
+
+func (s *Server) cacheResponse(cacheKey string, statusCode int, body []byte) {
+	s.cache.Store(cacheKey, cachedResponse{
+		StatusCode: statusCode,
+		Body:       body,
+	})
+}
+
+func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
+	return method + ":" + path + ":" + r.URL.Query().Get("__statusCode")
 }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -548,6 +479,52 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// ObservabilityManager handles metrics and logging operations
+func (s *Server) recordRequestMetrics(method, path string, statusCode int, duration time.Duration, requestSize, responseSize int64) {
+	s.metrics.RecordRequest(method, path, statusCode, duration, requestSize, responseSize)
+}
+
+func (s *Server) logRequestProcessed(method, path string, statusCode int, duration time.Duration, requestSize, responseSize int64) {
+	s.logger.Logger.Debug("Request processed",
+		zap.String("method", method),
+		zap.String("path", path),
+		zap.Int("status_code", statusCode),
+		zap.Duration("duration", duration),
+		zap.Int64("request_size", requestSize),
+		zap.Int64("response_size", responseSize),
+	)
+}
+
+func (s *Server) logMethodNotAllowed(method, path, remoteAddr string) {
+	s.logger.Logger.Warn("Method not allowed",
+		zap.String("method", method),
+		zap.String("path", path),
+		zap.String("remote_addr", remoteAddr),
+	)
+}
+
+func (s *Server) logNoExampleFound(statusCode, path string) {
+	s.logger.Logger.Warn("No example found",
+		zap.String("status_code", statusCode),
+		zap.String("path", path),
+	)
+}
+
+func (s *Server) logSerializationError(err error, path string) {
+	s.logger.Logger.Error("Failed to serialize response",
+		zap.Error(err),
+		zap.String("path", path),
+	)
+}
+
+func (s *Server) logServedFromCache(method, path string, statusCode int) {
+	s.logger.Logger.Debug("Served from cache",
+		zap.String("method", method),
+		zap.String("path", path),
+		zap.Int("status_code", statusCode),
+	)
+}
+
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -565,4 +542,62 @@ func parseStatusCode(code string) int {
 		return 200
 	}
 	return statusCode
+}
+
+// ResponseGenerator handles response generation logic
+func (s *Server) getStatusCodeFromRequest(r *http.Request) string {
+	statusCode := "200"
+	if override := r.URL.Query().Get("__statusCode"); override != "" {
+		statusCode = override
+	}
+	return statusCode
+}
+
+func (s *Server) generateResponse(route *parser.Route, statusCode string) ([]byte, int, error) {
+	example, err := s.parser.GetExampleResponse(route.Operation, statusCode)
+	if err == nil {
+		buf, err := json.Marshal(example)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to serialize response: %w", err)
+		}
+		return buf, parseStatusCode(statusCode), nil
+	}
+
+	// Try to find any 2xx response if requested status not found
+	for code := range route.Operation.Responses.Map() {
+		if strings.HasPrefix(code, "2") {
+			if example, err = s.parser.GetExampleResponse(route.Operation, code); err == nil {
+				buf, err := json.Marshal(example)
+				if err != nil {
+					return nil, 0, fmt.Errorf("failed to serialize response: %w", err)
+				}
+				return buf, parseStatusCode(code), nil
+			}
+		}
+	}
+
+	return nil, 0, fmt.Errorf("no example found for status code %s", statusCode)
+}
+
+func (s *Server) sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	response := map[string]string{"error": message}
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) sendMethodNotAllowedResponse(w http.ResponseWriter, methods []string, requestedMethod string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	response := map[string]interface{}{
+		"error":   fmt.Sprintf("Method %s not allowed", requestedMethod),
+		"methods": methods,
+	}
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) sendJSONResponse(w http.ResponseWriter, statusCode int, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_, _ = w.Write(body)
 }

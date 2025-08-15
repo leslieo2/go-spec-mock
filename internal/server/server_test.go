@@ -287,13 +287,13 @@ func TestResponseWriter(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	// Test invalid spec file
-	_, err := New("nonexistent.yaml", "localhost", "8080")
+	_, err := New("nonexistent.yaml", "localhost", "8080", nil)
 	if err == nil {
 		t.Error("Expected error for nonexistent spec file")
 	}
 
 	// Test with empty values
-	_, err = New("", "", "")
+	_, err = New("", "", "", nil)
 	if err == nil {
 		t.Error("Expected error for empty spec file")
 	}

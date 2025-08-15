@@ -47,12 +47,24 @@ clean:
 	@echo "Clean complete"
 
 # Run with example petstore
-run-example: build
+run-example:
 	@echo "Starting mock server with petstore example..."
 	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml
 
+# Run with example petstore and security features enabled
+run-example-secure: build
+	@echo "Starting mock server with petstore example (auth and rate limit enabled)"
+	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml -auth-enabled -rate-limit-enabled -rate-limit-rps 10
+
+# Generate a new API key
+generate-key:
+	@echo "Generating a new API key..."
+	@read -p "Enter a name for the key: " key_name; \
+	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml -generate-key $key_name
+
 # Install binary to GOPATH/bin
 install: deps fmt
+
 	@echo "Installing $(BINARY)..."
 	go install $(LDFLAGS) .
 
@@ -194,6 +206,8 @@ help:
 	@echo "  dev              - Start development server"
 	@echo "  watch            - Watch for file changes and rebuild"
 	@echo "  run-example      - Run with petstore example"
+	@echo "  run-example-secure - Run with petstore example and security features"
+	@echo "  generate-key     - Generate a new API key interactively"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test             - Run tests with coverage report"

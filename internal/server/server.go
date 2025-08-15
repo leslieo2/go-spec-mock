@@ -15,6 +15,7 @@ import (
 
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
+	"github.com/leslieo2/go-spec-mock/internal/security"
 	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 )
@@ -29,6 +30,11 @@ type Server struct {
 	cache      *sync.Map
 	routes     []parser.Route
 	routeMap   map[string][]parser.Route
+
+	// Security
+	authManager    *security.AuthManager
+	rateLimiter    *security.RateLimiter
+	securityConfig *security.SecurityConfig
 
 	// Observability
 	logger    *observability.Logger
@@ -46,7 +52,7 @@ type CORSConfig struct {
 	MaxAge           int
 }
 
-func New(specFile, host, port string) (*Server, error) {
+func New(specFile, host, port string, securityConfig *security.SecurityConfig) (*Server, error) {
 	p, err := parser.New(specFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse OpenAPI spec: %w", err)
@@ -64,6 +70,14 @@ func New(specFile, host, port string) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
 	}
 
+	// Initialize security
+	if securityConfig == nil {
+		securityConfig = security.DefaultSecurityConfig()
+	}
+
+	authManager := security.NewAuthManager(&securityConfig.Auth)
+	rateLimiter := security.NewRateLimiter(&securityConfig.RateLimit)
+
 	// Pre-build routes and route map
 	routes := p.GetRoutes()
 	routeMap := make(map[string][]parser.Route)
@@ -72,18 +86,21 @@ func New(specFile, host, port string) (*Server, error) {
 	}
 
 	return &Server{
-		parser:     p,
-		host:       host,
-		port:       port,
-		corsCfg:    defaultCORSConfig(),
-		maxReqSize: 10 * 1024 * 1024, // 10MB default limit
-		cache:      &sync.Map{},
-		routes:     routes,
-		routeMap:   routeMap,
-		logger:     logger,
-		metrics:    metrics,
-		tracer:     tracer,
-		startTime:  time.Now(),
+		parser:         p,
+		host:           host,
+		port:           port,
+		corsCfg:        defaultCORSConfig(),
+		maxReqSize:     10 * 1024 * 1024, // 10MB default limit
+		cache:          &sync.Map{},
+		routes:         routes,
+		routeMap:       routeMap,
+		authManager:    authManager,
+		rateLimiter:    rateLimiter,
+		securityConfig: securityConfig,
+		logger:         logger,
+		metrics:        metrics,
+		tracer:         tracer,
+		startTime:      time.Now(),
 	}, nil
 }
 
@@ -397,6 +414,21 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 		handler = s.corsMiddleware(handler)
 	}
 
+	// Security headers middleware
+	if s.securityConfig != nil {
+		handler = s.securityHeadersMiddleware(handler)
+	}
+
+	// Rate limiting middleware
+	if s.rateLimiter != nil {
+		handler = s.rateLimiter.Middleware(handler)
+	}
+
+	// API key authentication middleware
+	if s.authManager != nil {
+		handler = s.authManager.Middleware(handler)
+	}
+
 	// Request size limit middleware
 	handler = s.requestSizeLimitMiddleware(handler)
 
@@ -596,6 +628,43 @@ func (s *Server) sendMethodNotAllowedResponse(w http.ResponseWriter, methods []s
 		"methods": methods,
 	}
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.securityConfig == nil || !s.securityConfig.Headers.Enabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Strict-Transport-Security", fmt.Sprintf("max-age=%d; includeSubDomains", s.securityConfig.Headers.HSTSMaxAge))
+
+		if s.securityConfig.Headers.ContentSecurityPolicy != "" {
+			w.Header().Set("Content-Security-Policy", s.securityConfig.Headers.ContentSecurityPolicy)
+		}
+
+		// Allowed hosts check
+		if len(s.securityConfig.Headers.AllowedHosts) > 0 {
+			host := r.Host
+			allowed := false
+			for _, allowedHost := range s.securityConfig.Headers.AllowedHosts {
+				if host == allowedHost {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				http.Error(w, "Host not allowed", http.StatusForbidden)
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) sendJSONResponse(w http.ResponseWriter, statusCode int, body []byte) {

@@ -5,6 +5,52 @@ All notable changes to the Go-Spec-Mock project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-15
+
+### ✨ Added
+- **API Key Authentication**: Secure endpoints with `X-API-Key` header validation.
+- **Rate Limiting**: Added configurable rate limiting by IP, API key, or both.
+- **Security Configuration**: Manage security features via CLI flags (`-auth-enabled`, `-rate-limit-enabled`, etc.) or a YAML configuration file.
+- **API Key Generation**: New `-generate-key <name>` flag to easily create new API keys.
+- Added `make run-example-secure` and `make generate-key` to the `Makefile`.
+
+### 📚 Changed
+- Updated `README.md` with comprehensive documentation for all new security features.
+- Updated `CHANGELOG.md` to reflect all past and present versions based on git history.
+
+## [1.1.1] - 2025-08-14
+
+### ✨ Added
+- Added more comprehensive OpenAPI examples for `uspto.yml` and `petstore.yaml`.
+
+### 🚀 Changed
+- Improved server routing logic for better handling of complex specifications.
+- Refined the observability stack for more accurate metrics and logging.
+
+## [1.1.0] - 2025-08-13
+
+### ✨ Added
+- **Comprehensive Observability Stack**:
+  - **Logging**: Added structured (JSON) and configurable logging.
+  - **Metrics**: Integrated Prometheus metrics endpoint (`/metrics`).
+  - **Tracing**: Added support for distributed tracing via OpenTelemetry.
+  - **Health Checks**: Added `/health` and `/ready` endpoints.
+- **Enhanced CI/CD**: Improved CI workflows with `gosec` for security scanning and better linting rules.
+
+### 📚 Changed
+- **Upgraded Go Version**: Project now uses Go 1.24.
+- **Overhauled README**: Completely restructured the `README.md` for better clarity, adding sections for Docker, development, and a detailed feature list.
+- **Enhanced Docker Support**: Improved `Dockerfile` and development tooling.
+
+### 🐛 Fixed
+- Corrected the `gosec` action configuration in the CI workflow.
+
+## [1.0.1] - 2025-08-13
+
+### ⚡️ Performance
+- **Optimized Server Performance**: Implemented response caching and pre-computation of routes to significantly reduce response times.
+- **Optimized Parser**: Improved the performance and memory usage of the OpenAPI specification parser.
+
 ## [1.0.0] - 2025-08-13
 
 ### 🚀 Initial Release

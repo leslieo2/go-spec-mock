@@ -17,11 +17,13 @@ info:
     - **Production Ready**: Enterprise-grade logging and monitoring
   
     ## Authentication
-    This mock server does not require authentication. However, you can use the `Authorization`
-    header in your requests to simulate authenticated endpoints.
+    This server uses API Key-based authentication. Clients must provide a valid API key
+    in the `X-API-Key` header with each request to access protected endpoints.
   
     ## Rate Limiting
-    Currently, there are no rate limits on the mock server. Use responsibly for testing purposes.
+    The API is rate-limited to prevent abuse. Rate limit information is provided in the
+    `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` response headers.
+    If the rate limit is exceeded, the server will respond with a `429 Too Many Requests` status.
   
     ## Response Customization
     Use the `__statusCode` query parameter to override the default response status code:
@@ -30,6 +32,17 @@ info:
     ```
   
   version: 1.0.0
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: "API Key for authentication. Obtain a key from the administrator."
   contact:
     name: Go-Spec-Mock Team
     url: https://github.com/leslieo2/go-spec-mock

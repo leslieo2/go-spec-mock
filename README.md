@@ -21,6 +21,7 @@
 
 *   **🚀 Specification-First:** Instantly mock any API by providing an OpenAPI 3.0 (YAML/JSON) file.
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
+*   **🛡️ Security First:** Built-in support for API key authentication and rate limiting to simulate real-world security policies.
 *   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
 *   **🔧 Developer-Friendly:** Simple CLI, seamless integration with tools like [Insomnia](https://insomnia.rest/), and a comprehensive set of utility endpoints.
 *   **🏢 Enterprise-Ready:** Built with a clean, testable, and performant Go architecture.
@@ -36,6 +37,7 @@
     - [Insomnia Integration](#insomnia-integration)
 - [⚙️ Configuration](#️-configuration)
     - [CLI Flags](#cli-flags)
+    - [Security Configuration](#security-configuration)
     - [Dynamic Status Code Selection](#dynamic-status-code-selection)
 - [🐳 Docker Usage](#-docker-usage)
 - [👨‍💻 Development & Contribution](#-development--contribution)
@@ -134,6 +136,58 @@ Customize the server with the following flags:
 |-------------|----------------------------------|---------------|
 | `-host`     | The host to bind the server to.  | `127.0.0.1`   |
 | `-port`     | The port to run the server on.   | `8080`        |
+
+### Security Configuration
+
+Secure your mock server with API key authentication and rate limiting.
+
+| Flag                    | Description                                                 | Default   |
+|-------------------------|-------------------------------------------------------------|-----------|
+| `-auth-enabled`         | Enable API key authentication.                              | `false`   |
+| `-auth-config`          | Path to a security configuration file (see below).          | `""`      |
+| `-rate-limit-enabled`   | Enable rate limiting.                                       | `false`   |
+| `-rate-limit-strategy`  | Rate limiting strategy: `ip`, `api_key`, `both`.            | `ip`      |
+| `-rate-limit-rps`       | Global rate limit in requests per second.                   | `100`     |
+| `-generate-key <name>`  | Generate a new API key for the given name and exit.         | `""`      |
+
+#### Generating an API Key
+
+To create a new API key, use the `-generate-key` flag.
+
+```bash
+# Generate a key for a client named "my-app"
+go-spec-mock ./examples/petstore.yaml -generate-key "my-app"
+```
+
+This will output a new key. Add it to your security configuration file (`security.yaml`):
+
+```yaml
+# security.yaml
+auth:
+  enabled: true
+  keys:
+    - key: "YOUR_GENERATED_API_KEY"
+      name: "my-app"
+      enabled: true
+```
+
+#### Running with Security
+
+You can enable security features either with a config file or individual flags.
+
+```bash
+# Run with a security configuration file
+go-spec-mock ./examples/petstore.yaml -auth-config ./security.yaml
+
+# Or, enable features directly via flags
+go-spec-mock ./examples/petstore.yaml -auth-enabled -rate-limit-enabled -rate-limit-rps 50
+```
+
+When authentication is active, requests must include the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: YOUR_GENERATED_API_KEY" http://localhost:8080/pets
+```
 
 ### Observability Endpoints
 
@@ -274,8 +328,8 @@ The project is currently at **v1.0.0** and is stable for general use. The future
 
 #### 🛡️ Advanced Configuration
 - [x] CORS (Cross-Origin Resource Sharing) configuration
-- [ ] Rate limiting
-- [ ] Basic API key authentication
+- [x] Rate limiting
+- [x] API key authentication
 - [ ] HTTPS/TLS support
 - [ ] Configuration via environment variables or a config file
 

@@ -1,0 +1,17 @@
+# security.yaml
+auth:
+  enabled: true
+  header_name: "X-API-Key"      # Header name for API keys (default: X-API-Key)
+  query_param_name: "api_key"   # Query parameter name for API keys (default: api_key)
+  keys:
+    - key: "YOUR_GENERATED_API_KEY"
+      name: "my-app"
+      enabled: true
+      expires_at: "2024-12-31T23:59:59Z"  # Optional expiration (RFC3339 format)
+      rate_limit:                        # Optional per-key rate limiting
+        requests_per_second: 50
+        burst_size: 100
+        window_size: "1m"
+      metadata:                          # Optional key metadata
+        department: "engineering"
+        environment: "development"

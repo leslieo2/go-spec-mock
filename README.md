@@ -150,44 +150,51 @@ Secure your mock server with API key authentication and rate limiting.
 | `-rate-limit-rps`       | Global rate limit in requests per second.                   | `100`     |
 | `-generate-key <name>`  | Generate a new API key for the given name and exit.         | `""`      |
 
-#### Generating an API Key
+#### API Key Configuration
 
-To create a new API key, use the `-generate-key` flag.
+Create API keys using the `-generate-key` flag or configure them manually:
 
 ```bash
-# Generate a key for a client named "my-app"
+# Generate a key
 go-spec-mock ./examples/petstore.yaml -generate-key "my-app"
 ```
 
-This will output a new key. Add it to your security configuration file (`security.yaml`):
-
+**security.yaml:**
 ```yaml
-# security.yaml
 auth:
   enabled: true
+  header_name: "X-API-Key"      # or "Authorization" for Bearer tokens
+  query_param_name: "api_key"
   keys:
-    - key: "YOUR_GENERATED_API_KEY"
+    - key: "your-key-here"        # Generated or any custom string
       name: "my-app"
       enabled: true
+      expires_at: "2024-12-31T23:59:59Z"  # Optional
+      rate_limit:                        # Optional per-key limits
+        requests_per_second: 50
+        burst_size: 100
+      metadata:                          # Optional tags
+        env: "dev"
 ```
 
-#### Running with Security
-
-You can enable security features either with a config file or individual flags.
-
+**Authentication methods:**
 ```bash
-# Run with a security configuration file
+# Header
+curl -H "X-API-Key: your-key-here" http://localhost:8080/pets
+
+# Bearer token
+curl -H "Authorization: Bearer your-key-here" http://localhost:8080/pets
+
+# Query parameter
+curl "http://localhost:8080/pets?api_key=your-key-here"
+```
+
+**Usage:**
+```bash
 go-spec-mock ./examples/petstore.yaml -auth-config ./security.yaml
-
-# Or, enable features directly via flags
-go-spec-mock ./examples/petstore.yaml -auth-enabled -rate-limit-enabled -rate-limit-rps 50
 ```
 
-When authentication is active, requests must include the `X-API-Key` header:
-
-```bash
-curl -H "X-API-Key: YOUR_GENERATED_API_KEY" http://localhost:8080/pets
-```
+Keys support expiration, per-key rate limits, metadata, and revocation via `enabled: false`. Authentication is automatically skipped for `/health`, `/ready`, and `/metrics` endpoints.
 
 ### Observability Endpoints
 

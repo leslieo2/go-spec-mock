@@ -272,7 +272,7 @@ func TestServeDocumentation(t *testing.T) {
 
 func TestResponseWriter(t *testing.T) {
 	base := httptest.NewRecorder()
-	rw := &responseWriter{ResponseWriter: base, statusCode: http.StatusOK}
+	rw := &ResponseWriter{ResponseWriter: base, statusCode: http.StatusOK}
 
 	rw.WriteHeader(http.StatusNotFound)
 

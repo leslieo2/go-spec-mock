@@ -149,6 +149,11 @@ paths:
             type: integer
             format: int64
       responses:
+        '200':
+          description: Pet deleted successfully
+          content:
+            application/json:
+              example: {}
         '400':
           description: Invalid pet value
           content:

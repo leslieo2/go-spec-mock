@@ -16,7 +16,7 @@ import (
 func TestServer_ObservabilityEndpoints(t *testing.T) {
 	// Create server with test spec
 	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig())
+	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestServer_ObservabilityEndpoints(t *testing.T) {
 
 func TestHealthHandler(t *testing.T) {
 	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig())
+	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestHealthHandler(t *testing.T) {
 
 func TestReadinessHandler_Ready(t *testing.T) {
 	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig())
+	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestReadinessHandler_NotReady(t *testing.T) {
 
 func TestMetricsHandler(t *testing.T) {
 	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig())
+	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestMetricsHandler(t *testing.T) {
 
 func TestDocumentationHandler(t *testing.T) {
 	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig())
+	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestDocumentationHandler(t *testing.T) {
 
 func TestServer_MetricsCollection(t *testing.T) {
 	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig())
+	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -296,7 +296,7 @@ func TestServer_MetricsCollection(t *testing.T) {
 
 func TestServer_ObservabilityIntegration(t *testing.T) {
 	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig())
+	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}

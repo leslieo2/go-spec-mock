@@ -6,7 +6,6 @@ require (
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.23.0
-	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0
 	go.opentelemetry.io/otel/sdk v1.37.0
@@ -15,6 +14,8 @@ require (
 	golang.org/x/time v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/stretchr/testify v1.10.0
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

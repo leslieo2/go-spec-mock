@@ -122,8 +122,3 @@ func (rw *ResponseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
 }
-
-// NewResponseWriter creates a new ResponseWriter
-func NewResponseWriter(w http.ResponseWriter) *ResponseWriter {
-	return &ResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-}

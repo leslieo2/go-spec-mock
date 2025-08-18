@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"go.uber.org/zap"
@@ -287,13 +288,13 @@ func TestResponseWriter(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	// Test invalid spec file
-	_, err := New("nonexistent.yaml", "localhost", "8080", nil)
+	_, err := New("nonexistent.yaml", "localhost", "8080", nil, "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err == nil {
 		t.Error("Expected error for nonexistent spec file")
 	}
 
 	// Test with empty values
-	_, err = New("", "", "", nil)
+	_, err = New("", "", "", nil, "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
 	if err == nil {
 		t.Error("Expected error for empty spec file")
 	}

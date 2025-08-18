@@ -30,6 +30,13 @@ type Server struct {
 	routes     []parser.Route
 	routeMap   map[string][]parser.Route
 
+	// Server configuration
+	metricsPort     string
+	readTimeout     time.Duration
+	writeTimeout    time.Duration
+	idleTimeout     time.Duration
+	shutdownTimeout time.Duration
+
 	// Security
 	authManager    *security.AuthManager
 	rateLimiter    *security.RateLimiter
@@ -51,7 +58,7 @@ type CORSConfig struct {
 	MaxAge           int
 }
 
-func New(specFile, host, port string, securityConfig *security.SecurityConfig) (*Server, error) {
+func New(specFile, host, port string, securityConfig *security.SecurityConfig, metricsPort string, readTimeout, writeTimeout, idleTimeout, shutdownTimeout time.Duration, maxRequestSize int64) (*Server, error) {
 	p, err := parser.New(specFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse OpenAPI spec: %w", err)
@@ -85,21 +92,26 @@ func New(specFile, host, port string, securityConfig *security.SecurityConfig) (
 	}
 
 	return &Server{
-		parser:         p,
-		host:           host,
-		port:           port,
-		corsCfg:        defaultCORSConfig(),
-		maxReqSize:     10 * 1024 * 1024, // 10MB default limit
-		cache:          &sync.Map{},
-		routes:         routes,
-		routeMap:       routeMap,
-		authManager:    authManager,
-		rateLimiter:    rateLimiter,
-		securityConfig: securityConfig,
-		logger:         logger,
-		metrics:        metrics,
-		tracer:         tracer,
-		startTime:      time.Now(),
+		parser:          p,
+		host:            host,
+		port:            port,
+		corsCfg:         defaultCORSConfig(),
+		maxReqSize:      maxRequestSize,
+		metricsPort:     metricsPort,
+		readTimeout:     readTimeout,
+		writeTimeout:    writeTimeout,
+		idleTimeout:     idleTimeout,
+		shutdownTimeout: shutdownTimeout,
+		cache:           &sync.Map{},
+		routes:          routes,
+		routeMap:        routeMap,
+		authManager:     authManager,
+		rateLimiter:     rateLimiter,
+		securityConfig:  securityConfig,
+		logger:          logger,
+		metrics:         metrics,
+		tracer:          tracer,
+		startTime:       time.Now(),
 	}, nil
 }
 
@@ -144,9 +156,9 @@ func (s *Server) Start() error {
 	s.server = &http.Server{
 		Addr:           fmt.Sprintf("%s:%s", s.host, s.port),
 		Handler:        handler,
-		ReadTimeout:    15 * time.Second,
-		WriteTimeout:   15 * time.Second,
-		IdleTimeout:    60 * time.Second,
+		ReadTimeout:    s.readTimeout,
+		WriteTimeout:   s.writeTimeout,
+		IdleTimeout:    s.idleTimeout,
 		MaxHeaderBytes: 1 << 20, // 1MB max header size
 	}
 
@@ -159,15 +171,19 @@ func (s *Server) Start() error {
 	s.metrics.SetHealthStatus(true)
 
 	// Start metrics server in background
+	var metricsServer *http.Server
 	if s.metrics != nil {
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("/metrics", s.metrics.Handler())
+		metricsServer = &http.Server{
+			Addr:              fmt.Sprintf(":%s", s.metricsPort),
+			Handler:           metricsMux,
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		s.logger.Logger.Info("Starting metrics server",
+			zap.String("port", s.metricsPort),
+		)
 		go func() {
-			metricsMux := http.NewServeMux()
-			metricsMux.Handle("/metrics", s.metrics.Handler())
-			metricsServer := &http.Server{
-				Addr:              ":9090",
-				Handler:           metricsMux,
-				ReadHeaderTimeout: 5 * time.Second,
-			}
 			if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				s.logger.Logger.Error("Metrics server failed", zap.Error(err))
 			}
@@ -189,8 +205,16 @@ func (s *Server) Start() error {
 	s.metrics.SetHealthStatus(false)
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 	defer cancel()
+
+	// Shutdown metrics server first, then main server
+	if metricsServer != nil {
+		s.logger.Logger.Info("Shutting down metrics server...")
+		if err := metricsServer.Shutdown(ctx); err != nil {
+			s.logger.Logger.Error("Failed to shutdown metrics server", zap.Error(err))
+		}
+	}
 
 	return s.server.Shutdown(ctx)
 }

@@ -132,10 +132,40 @@ go install github.com/leslieo2/go-spec-mock@latest
 
 Customize the server with the following flags:
 
-| Flag        | Description                      | Default       |
-|-------------|----------------------------------|---------------|
-| `-host`     | The host to bind the server to.  | `127.0.0.1`   |
-| `-port`     | The port to run the server on.   | `8080`        |
+| Flag                 | Description                                | Default       |
+|----------------------|--------------------------------------------|---------------|
+| `-host`              | The host to bind the server to.            | `localhost`   |
+| `-port`              | The port to run the server on.             | `8080`        |
+| `-metrics-port`      | The port for the metrics server.           | `9090`        |
+| `-read-timeout`      | HTTP server read timeout.                  | `15s`         |
+| `-write-timeout`     | HTTP server write timeout.                 | `15s`         |
+| `-idle-timeout`      | HTTP server idle timeout.                  | `60s`         |
+| `-max-request-size`  | Maximum request size in bytes.             | `10485760`    |
+| `-shutdown-timeout`  | Graceful shutdown timeout.                 | `30s`         |
+
+### Environment Variables
+
+All CLI flags can also be configured via environment variables:
+
+| Environment Variable           | Description                        | Default |
+|--------------------------------|------------------------------------|---------|
+| `GO_SPEC_MOCK_HOST`            | Server host                        | localhost |
+| `GO_SPEC_MOCK_PORT`            | Server port                        | 8080    |
+| `GO_SPEC_MOCK_METRICS_PORT`    | Metrics server port                | 9090    |
+| `GO_SPEC_MOCK_READ_TIMEOUT`    | HTTP read timeout (e.g., "30s")    | 15s     |
+| `GO_SPEC_MOCK_WRITE_TIMEOUT`   | HTTP write timeout (e.g., "30s")   | 15s     |
+| `GO_SPEC_MOCK_IDLE_TIMEOUT`    | HTTP idle timeout (e.g., "60s")    | 60s     |
+| `GO_SPEC_MOCK_MAX_REQUEST_SIZE`| Max request size in bytes          | 10485760 |
+| `GO_SPEC_MOCK_SHUTDOWN_TIMEOUT`| Graceful shutdown timeout (e.g., "30s") | 30s |
+
+**Example:**
+```bash
+# Using environment variables
+GO_SPEC_MOCK_PORT=8081 GO_SPEC_MOCK_METRICS_PORT=9091 go-spec-mock ./examples/petstore.yaml
+
+# Mixed usage (env vars override CLI defaults)
+go-spec-mock ./examples/petstore.yaml -port 8082
+```
 
 ### Security Configuration
 
@@ -249,9 +279,16 @@ A `Dockerfile` is included for easy containerization.
 # 1. Build the Docker image
 docker build -t go-spec-mock .
 
-# 2. Run the container, mounting your spec file
+# 2. Run the container with custom ports
 # Note: The spec path is relative to the container's /app directory
-docker run -p 8080:8080 \
+docker run -p 8080:8080 -p 9090:9090 \
+  -v $(pwd)/examples:/app/examples \
+  go-spec-mock:latest ./examples/petstore.yaml
+
+# 3. Run with custom configuration
+docker run -p 8081:8081 -p 9091:9091 \
+  -e GO_SPEC_MOCK_PORT=8081 \
+  -e GO_SPEC_MOCK_METRICS_PORT=9091 \
   -v $(pwd)/examples:/app/examples \
   go-spec-mock:latest ./examples/petstore.yaml
 ```
@@ -337,8 +374,10 @@ The project is currently at **v1.0.0** and is stable for general use. The future
 - [x] CORS (Cross-Origin Resource Sharing) configuration
 - [x] Rate limiting
 - [x] API key authentication
+- [x] Configuration via CLI flags and environment variables
+- [x] Customizable server timeouts and ports
 - [ ] HTTPS/TLS support
-- [ ] Configuration via environment variables or a config file
+- [ ] Configuration file support
 
 #### 📦 Deployment
 - [ ] Official Docker images on Docker Hub

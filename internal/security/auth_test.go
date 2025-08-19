@@ -78,7 +78,7 @@ func TestAuthMiddleware_Failure_NoKey(t *testing.T) {
 	middleware.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusUnauthorized, rr.Code, "Should return 401 for missing key")
-	assert.Contains(t, rr.Body.String(), "API key required", "Response body should contain error message")
+	assert.Contains(t, rr.Body.String(), "Authentication required", "Response body should contain error message")
 }
 
 func TestAuthMiddleware_Disabled(t *testing.T) {

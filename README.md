@@ -169,7 +169,7 @@ go-spec-mock ./examples/petstore.yaml -port 8082
 
 ### Security Configuration
 
-Secure your mock server with API key authentication and rate limiting.
+Secure your mock server with enterprise-grade security features including API key authentication, rate limiting, security headers, and CORS protection.
 
 | Flag                    | Description                                                 | Default   |
 |-------------------------|-------------------------------------------------------------|-----------|
@@ -180,13 +180,18 @@ Secure your mock server with API key authentication and rate limiting.
 | `-rate-limit-rps`       | Global rate limit in requests per second.                   | `100`     |
 | `-generate-key <name>`  | Generate a new API key for the given name and exit.         | `""`      |
 
-#### API Key Configuration
+#### API Key Authentication
 
 Create API keys using the `-generate-key` flag or configure them manually:
 
 ```bash
 # Generate a key
 go-spec-mock ./examples/petstore.yaml -generate-key "my-app"
+
+# List all keys
+go-spec-mock ./examples/petstore.yaml -list-keys
+
+# Revoke a key by setting enabled: false in security.yaml
 ```
 
 **security.yaml:**
@@ -199,32 +204,94 @@ auth:
     - key: "your-key-here"        # Generated or any custom string
       name: "my-app"
       enabled: true
-      expires_at: "2024-12-31T23:59:59Z"  # Optional
+      expires_at: "2024-12-31T23:59:59Z"  # Optional expiration (RFC3339)
       rate_limit:                        # Optional per-key limits
         requests_per_second: 50
         burst_size: 100
-      metadata:                          # Optional tags
-        env: "dev"
+        window_size: "1m"
+      metadata:                          # Optional key metadata
+        department: "engineering"
+        environment: "development"
+        owner: "team-alpha"
 ```
 
 **Authentication methods:**
 ```bash
-# Header
+# Header authentication
 curl -H "X-API-Key: your-key-here" http://localhost:8080/pets
 
-# Bearer token
+# Bearer token authentication
 curl -H "Authorization: Bearer your-key-here" http://localhost:8080/pets
 
-# Query parameter
+# Query parameter authentication
 curl "http://localhost:8080/pets?api_key=your-key-here"
+```
+
+Authentication is automatically skipped for `/health`, `/ready`, and `/metrics` endpoints.
+
+#### Rate Limiting
+
+Advanced rate limiting with hierarchical limits and DDoS protection:
+
+**Rate Limiting Strategies:**
+- `ip`: Rate limit by client IP address
+- `api_key`: Rate limit by API key
+- `both`: Apply both IP and API key limits (most restrictive)
+
+**Rate Limit Headers:**
+The server returns standard rate limit headers:
+- `X-RateLimit-Limit`: Maximum requests allowed
+- `X-RateLimit-Remaining`: Remaining requests in current window
+- `X-RateLimit-Reset`: Unix timestamp when limit resets
+- `X-RateLimit-Retry-After`: Seconds to wait before retry (when limited)
+
+#### Security Headers & CORS
+
+Enterprise-grade security headers and CORS configuration:
+
+```yaml
+cors:
+  enabled: true
+  allowed_origins:                  # Specific origins (avoid wildcard)
+    - "http://localhost:3000"
+    - "https://yourdomain.com"
+  allowed_methods:                  # HTTP methods to allow
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+    - "PATCH"
+  allowed_headers:                  # Headers to allow
+    - "Content-Type"
+    - "Authorization"
+    - "Accept"
+    - "X-Requested-With"
+    - "X-API-Key"
+  allow_credentials: false          # Allow cookies/auth headers
+  max_age: 86400                    # 24-hour preflight cache
+
+security:
+  content_security_policy: "default-src 'self'"
+  strict_transport_security: "max-age=31536000; includeSubDomains"
+  x_content_type_options: "nosniff"
+  x_frame_options: "DENY"
+  x_xss_protection: "1; mode=block"
+  allowed_hosts:                    # Host validation
+    - "localhost"
+    - "yourdomain.com"
 ```
 
 **Usage:**
 ```bash
-go-spec-mock ./examples/petstore.yaml -auth-config ./security.yaml
+# Enable all security features
+go-spec-mock ./examples/petstore.yaml \
+  -auth-config ./security.yaml \
+  -auth-enabled \
+  -rate-limit-enabled \
+  -rate-limit-strategy both \
+  -rate-limit-rps 50
 ```
-
-Keys support expiration, per-key rate limits, metadata, and revocation via `enabled: false`. Authentication is automatically skipped for `/health`, `/ready`, and `/metrics` endpoints.
 
 ### Observability Endpoints
 
@@ -317,9 +384,12 @@ This project uses a `Makefile` to streamline common development tasks.
 |----------------------|--------------------------------------------------------|
 | `make build`         | Build the `go-spec-mock` binary for your OS.           |
 | `make run-example`   | Run the server with the example `petstore.yaml` spec.  |
+| `make run-example-secure` | Run with security features enabled (auth + rate limiting). |
+| `make generate-key`  | Generate a new API key interactively.                  |
 | `make test`          | Run all unit tests.                                    |
 | `make fmt`           | Format the Go source code.                             |
 | `make lint`          | Run `golangci-lint` to check for code quality issues.  |
+| `make security`      | Run security scan with `gosec`.                        |
 | `make ci`            | Run the full CI pipeline (format, lint, test).         |
 | `make build-all`     | Cross-compile binaries for Linux, macOS, and Windows.  |
 | `make curl-test`     | Run automated `curl` tests against the example server. |
@@ -334,9 +404,12 @@ This project uses a `Makefile` to streamline common development tasks.
 ├── main.go               # CLI entry point
 ├── examples/
 │   └── petstore.yaml     # Sample OpenAPI spec
-└── internal/
-    ├── parser/           # OpenAPI specification parsing logic
-    └── server/           # HTTP server and routing logic
+├── security.yaml         # Security configuration template
+├── internal/
+│   ├── parser/           # OpenAPI specification parsing logic
+│   ├── server/           # HTTP server and routing logic
+│   ├── security/         # Authentication and rate limiting
+│   └── observability/    # Logging, metrics, and tracing
 ```
 
 ## 🛣️ Roadmap

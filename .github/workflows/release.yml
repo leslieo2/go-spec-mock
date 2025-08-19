@@ -67,12 +67,12 @@ jobs:
               if [ "$GOOS" = "windows" ] && [ "$GOARCH" = "arm64" ]; then
                 continue # Skip windows arm64
               fi
-              
+          
               BINARY_NAME=go-spec-mock-${GOOS}-${GOARCH}
               if [ "$GOOS" = "windows" ]; then
                 BINARY_NAME="${BINARY_NAME}.exe"
               fi
-              
+          
               echo "Building for $GOOS/$GOARCH..."
               GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT:0:7} -X main.Date=${DATE}" -o dist/${BINARY_NAME} .
               cd dist && tar -czf ${BINARY_NAME}.tar.gz ${BINARY_NAME} && cd ..
@@ -127,17 +127,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  homebrew:
-    name: Update Homebrew Formula
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update Homebrew formula
-        uses: dawidd6/action-homebrew-bump-formula@v3
-        with:
-          token: ${{ secrets.HOMEBREW_TOKEN }}
-          formula: go-spec-mock
-          tag: ${{ github.ref }}
-          revision: ${{ github.sha }}
-        env:
-          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}

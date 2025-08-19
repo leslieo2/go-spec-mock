@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -32,7 +33,6 @@ type RateLimit struct {
 type AuthManager struct {
 	mu     sync.RWMutex
 	keys   map[string]*APIKey
-	cache  *sync.Map
 	config *AuthConfig
 }
 
@@ -69,7 +69,6 @@ func DefaultAuthConfig() *AuthConfig {
 func NewAuthManager(config *AuthConfig) *AuthManager {
 	am := &AuthManager{
 		keys:   make(map[string]*APIKey),
-		cache:  &sync.Map{},
 		config: config,
 	}
 
@@ -214,13 +213,42 @@ func (am *AuthManager) Middleware(next http.Handler) http.Handler {
 
 		key := am.ExtractAPIKey(r)
 		if key == "" {
-			http.Error(w, "API key required", http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			response := map[string]interface{}{
+				"error":   "Authentication required",
+				"message": "API key is required to access this endpoint",
+				"code":    "UNAUTHORIZED",
+			}
+			jsonResponse, _ := json.Marshal(response)
+			_, _ = w.Write(jsonResponse)
 			return
 		}
 
 		apiKey, err := am.ValidateAPIKey(key)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			code := "INVALID_API_KEY"
+			message := err.Error()
+
+			// Map specific error types to codes
+			switch {
+			case strings.Contains(message, "expired"):
+				code = "API_KEY_EXPIRED"
+			case strings.Contains(message, "disabled"):
+				code = "API_KEY_DISABLED"
+			case strings.Contains(message, "invalid"):
+				code = "INVALID_API_KEY"
+			}
+
+			response := map[string]interface{}{
+				"error":   code,
+				"message": message,
+				"code":    code,
+			}
+			jsonResponse, _ := json.Marshal(response)
+			_, _ = w.Write(jsonResponse)
 			return
 		}
 

@@ -15,6 +15,7 @@ type SecurityConfig struct {
 	Auth      AuthConfig      `json:"auth" yaml:"auth"`
 	RateLimit RateLimitConfig `json:"rate_limit" yaml:"rate_limit"`
 	Headers   SecurityHeaders `json:"headers" yaml:"headers"`
+	CORS      CORSConfig      `json:"cors" yaml:"cors"`
 }
 
 type SecurityHeaders struct {
@@ -22,6 +23,15 @@ type SecurityHeaders struct {
 	ContentSecurityPolicy string   `json:"content_security_policy" yaml:"content_security_policy"`
 	HSTSMaxAge            int      `json:"hsts_max_age" yaml:"hsts_max_age"`
 	AllowedHosts          []string `json:"allowed_hosts" yaml:"allowed_hosts"`
+}
+
+type CORSConfig struct {
+	Enabled          bool     `json:"enabled" yaml:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins" yaml:"allowed_origins"`
+	AllowedMethods   []string `json:"allowed_methods" yaml:"allowed_methods"`
+	AllowedHeaders   []string `json:"allowed_headers" yaml:"allowed_headers"`
+	AllowCredentials bool     `json:"allow_credentials" yaml:"allow_credentials"`
+	MaxAge           int      `json:"max_age" yaml:"max_age"`
 }
 
 func DefaultSecurityConfig() *SecurityConfig {
@@ -33,6 +43,14 @@ func DefaultSecurityConfig() *SecurityConfig {
 			ContentSecurityPolicy: "default-src 'self'",
 			HSTSMaxAge:            31536000, // 1 year
 			AllowedHosts:          []string{},
+		},
+		CORS: CORSConfig{
+			Enabled:          true,
+			AllowedOrigins:   []string{"*"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+			AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"},
+			AllowCredentials: false,
+			MaxAge:           86400, // 24 hours
 		},
 	}
 }
@@ -115,6 +133,26 @@ func (c *SecurityConfig) Validate() error {
 
 		if c.RateLimit.Global.WindowSize <= 0 {
 			return fmt.Errorf("global rate limit window_size must be positive")
+		}
+	}
+
+	if c.CORS.Enabled {
+		if len(c.CORS.AllowedOrigins) == 0 {
+			return fmt.Errorf("allowed_origins must not be empty when CORS is enabled")
+		}
+
+		if len(c.CORS.AllowedMethods) == 0 {
+			return fmt.Errorf("allowed_methods must not be empty when CORS is enabled")
+		}
+
+		for _, origin := range c.CORS.AllowedOrigins {
+			if origin == "" {
+				return fmt.Errorf("allowed_origins cannot contain empty strings")
+			}
+		}
+
+		if c.CORS.MaxAge < 0 {
+			return fmt.Errorf("max_age must be non-negative")
 		}
 	}
 

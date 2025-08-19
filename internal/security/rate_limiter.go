@@ -212,8 +212,9 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusTooManyRequests)
 
 			response := map[string]interface{}{
-				"error":       "Rate limit exceeded",
+				"error":       "RATE_LIMIT_EXCEEDED",
 				"message":     fmt.Sprintf("Rate limit exceeded. Try again in %v", status.RetryAfter),
+				"code":        "RATE_LIMIT_EXCEEDED",
 				"retry_after": int(status.RetryAfter.Seconds()),
 			}
 			jsonResponse, _ := json.Marshal(response)

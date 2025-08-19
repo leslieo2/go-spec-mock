@@ -95,7 +95,7 @@ func New(specFile, host, port string, securityConfig *security.SecurityConfig, m
 		parser:          p,
 		host:            host,
 		port:            port,
-		corsCfg:         defaultCORSConfig(),
+		corsCfg:         corsConfigFromSecurity(securityConfig.CORS),
 		maxReqSize:      maxRequestSize,
 		metricsPort:     metricsPort,
 		readTimeout:     readTimeout,
@@ -123,6 +123,17 @@ func defaultCORSConfig() *CORSConfig {
 		AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"},
 		AllowCredentials: false,
 		MaxAge:           86400, // 24 hours
+	}
+}
+
+func corsConfigFromSecurity(corsCfg security.CORSConfig) *CORSConfig {
+	return &CORSConfig{
+		Enabled:          corsCfg.Enabled,
+		AllowedOrigins:   corsCfg.AllowedOrigins,
+		AllowedMethods:   corsCfg.AllowedMethods,
+		AllowedHeaders:   corsCfg.AllowedHeaders,
+		AllowCredentials: corsCfg.AllowCredentials,
+		MaxAge:           corsCfg.MaxAge,
 	}
 }
 

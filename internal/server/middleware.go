@@ -112,7 +112,14 @@ func (s *Server) securityHeadersMiddleware(next http.Handler) http.Handler {
 				}
 			}
 			if !allowed {
-				http.Error(w, "Host not allowed", http.StatusForbidden)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				response := map[string]interface{}{
+					"error":   "FORBIDDEN",
+					"message": "Host not allowed",
+					"code":    "HOST_NOT_ALLOWED",
+				}
+				_ = json.NewEncoder(w).Encode(response)
 				return
 			}
 		}

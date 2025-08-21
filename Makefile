@@ -49,12 +49,22 @@ clean:
 # Run with example petstore
 run-example:
 	@echo "Starting mock server with petstore example..."
-	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml
+	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml
 
 # Run with example petstore and security features enabled
 run-example-secure: build
 	@echo "Starting mock server with petstore example (auth and rate limit enabled)"
-	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml -auth-enabled -rate-limit-enabled -rate-limit-rps 10
+	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -auth-enabled -rate-limit-enabled -rate-limit-rps 10
+
+# Run with security-focused configuration
+run-example-secure-config: build
+	@echo "Starting mock server with security-focused configuration..."
+	$(BIN_DIR)/$(BINARY) -config ./examples/config/security-focused.yaml -spec-file ./examples/petstore.yaml
+
+# Run with minimal configuration
+run-example-minimal: build
+	@echo "Starting mock server with minimal configuration..."
+	$(BIN_DIR)/$(BINARY) -config ./examples/config/minimal.yaml -spec-file ./examples/petstore.yaml
 
 # Generate a new API key
 generate-key:
@@ -143,17 +153,24 @@ docker:
 # Docker run with example
 docker-run:
 	@echo "Starting Docker container with petstore example..."
-	docker run -p 8080:8080 $(BINARY):latest ./examples/petstore.yaml
+	docker run -p 8080:8080 $(BINARY):latest -spec-file ./examples/petstore.yaml
+
+# Docker run with configuration file
+docker-run-config:
+	@echo "Starting Docker container with configuration file..."
+	docker run -p 8080:8080 -p 9090:9090 \
+	  -v $(pwd)/examples:/app/examples \
+	  $(BINARY):latest -config ./examples/config/minimal.yaml -spec-file ./examples/petstore.yaml
 
 # Docker run interactive
 docker-run-dev:
 	@echo "Starting Docker container in development mode..."
-	docker run -it -p 8080:8080 $(BINARY):latest ./examples/petstore.yaml -port 8080
+	docker run -it -p 8080:8080 $(BINARY):latest -spec-file ./examples/petstore.yaml -port 8080
 
 # Quick development server
 dev:
 	@echo "Starting development server..."
-	go run . ./examples/petstore.yaml -port 8080
+	go run . -spec-file ./examples/petstore.yaml -port 8080
 
 # Watch for changes and rebuild (requires entr)
 watch:
@@ -167,7 +184,7 @@ watch:
 # Quick curl test commands
 curl-test: build
 	@echo "Starting server for curl testing..."
-	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml -port 8085 & 
+	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -port 8085 & 
 	SERVER_PID=$$!; \
 	sleep 2; \
 	echo "=== Testing endpoints ==="; \
@@ -196,47 +213,50 @@ curl-interactive: build
 	@echo "  curl 'http://localhost:8080/pets/123?__statusCode=404'"
 	@echo "  curl -X POST http://localhost:8080/pets"
 	@echo "  curl -X DELETE http://localhost:8080/pets/123"
-	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml -port 8080
+	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -port 8080
 
 # Show help
 help:
 	@echo "$(BINARY) - Go API Mock Server"
 	@echo ""
 	@echo "Development:"
-	@echo "  dev              - Start development server"
-	@echo "  watch            - Watch for file changes and rebuild"
-	@echo "  run-example      - Run with petstore example"
-	@echo "  run-example-secure - Run with petstore example and security features"
-	@echo "  generate-key     - Generate a new API key interactively"
+	@echo "  dev                    - Start development server"
+	@echo "  watch                  - Watch for file changes and rebuild"
+	@echo "  run-example            - Run with petstore example"
+	@echo "  run-example-secure     - Run with petstore example and security features"
+	@echo "  run-example-secure-config - Run with security-focused configuration"
+	@echo "  run-example-minimal    - Run with minimal configuration"
+	@echo "  generate-key           - Generate a new API key interactively"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test             - Run tests with coverage report"
-	@echo "  test-quick       - Run tests without coverage"
-	@echo "  curl-test        - Quick automated curl tests"
-	@echo "  curl-interactive - Interactive curl testing"
+	@echo "  test                   - Run tests with coverage report"
+	@echo "  test-quick             - Run tests without coverage"
+	@echo "  curl-test              - Quick automated curl tests"
+	@echo "  curl-interactive       - Interactive curl testing"
 	@echo ""
 	@echo "Build:"
-	@echo "  build            - Build the binary"
-	@echo "  build-all        - Build for all platforms"
-	@echo "  build-version    - Build with version info"
-	@echo "  release          - Full release build (optimized)"
+	@echo "  build                  - Build the binary"
+	@echo "  build-all              - Build for all platforms"
+	@echo "  build-version          - Build with version info"
+	@echo "  release                - Full release build (optimized)"
 	@echo ""
 	@echo "Docker:"
-	@echo "  docker           - Build Docker image"
-	@echo "  docker-run       - Run with petstore example"
-	@echo "  docker-run-dev   - Run interactively"
+	@echo "  docker                 - Build Docker image"
+	@echo "  docker-run             - Run with petstore example"
+	@echo "  docker-run-config      - Run with configuration file"
+	@echo "  docker-run-dev         - Run interactively"
 	@echo ""
 	@echo "Quality:"
-	@echo "  fmt              - Format code"
-	@echo "  vet              - Run go vet"
-	@echo "  lint             - Run golangci-lint"
-	@echo "  security         - Run security check"
+	@echo "  fmt                    - Format code"
+	@echo "  vet                    - Run go vet"
+	@echo "  lint                   - Run golangci-lint"
+	@echo "  security               - Run security check"
 	@echo ""
 	@echo "Utilities:"
-	@echo "  install          - Install to GOPATH/bin"
-	@echo "  clean            - Clean build artifacts"
-	@echo "  deps             - Install/update dependencies"
-	@echo "  ci               - Full CI pipeline"
+	@echo "  install                - Install to GOPATH/bin"
+	@echo "  clean                  - Clean build artifacts"
+	@echo "  deps                   - Install/update dependencies"
+	@echo "  ci                     - Full CI pipeline"
 	@echo ""
 	@echo "Version: $(VERSION) ($(COMMIT))"
 	@echo "Build date: $(DATE)"

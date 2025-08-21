@@ -33,12 +33,13 @@
     - [Installation](#installation)
     - [Quick Usage](#quick-usage)
 - [📖 Usage Guide](#-usage-guide)
-    - [Basic Workflow](#basic-workflow)
     - [Insomnia Integration](#insomnia-integration)
-- [⚙️ Configuration](#️-configuration)
-    - [CLI Flags](#cli-flags)
-    - [Security Configuration](#security-configuration)
     - [Dynamic Status Code Selection](#dynamic-status-code-selection)
+- [⚙️ Configuration](#️-configuration)
+    - [Configuration Precedence](#configuration-precedence)
+    - [CLI Flags & Environment Variables](#cli-flags--environment-variables)
+    - [Configuration File](#configuration-file)
+    - [Security Features](#security-features)
 - [🐳 Docker Usage](#-docker-usage)
 - [👨‍💻 Development & Contribution](#-development--contribution)
     - [Setup](#setup)
@@ -64,55 +65,34 @@ go install github.com/leslieo2/go-spec-mock@latest
 
 ### Quick Usage
 
-1.  Point `go-spec-mock` to your OpenAPI specification file.
+1.  **Get an OpenAPI Spec:** Create your own, or download one like the [Swagger Petstore](https://petstore3.swagger.io/api/v3/openapi.json) spec.
 
+2.  **Start the Mock Server:** Point `go-spec-mock` to your specification file.
     ```bash
     # Start mocking using the example Petstore spec
     go-spec-mock ./examples/petstore.yaml
     ```
 
-2.  You'll see output indicating the server is running and which routes are available:
+3.  You'll see output indicating the server is running and which routes are available:
     ```
     2023/10/27 10:00:00 Starting server on http://127.0.0.1:8080
     2023/10/27 10:00:00 ----------------------------------------
     2023/10/27 10:00:00 Registered Route: GET /
     2023/10/27 10:00:00 Registered Route: GET /health
     2023/10/27 10:00:00 Registered Route: GET /pets
-    2023/10/27 10:00:00 Registered Route: POST /pets
-    2023/10/27 10:00:00 Registered Route: GET /pets/{petId}
-    2023/10/27 10:00:00 Registered Route: DELETE /pets/{petId}
-    2023/10/27 10:00:00 ----------------------------------------
+    ...
     ```
 
-3.  In another terminal, test an endpoint using `curl`:
+4.  **Test Your Endpoints:** In another terminal, use any HTTP client like `curl` to interact with your mock API.
     ```bash
     # Get a list of all pets
     curl http://localhost:8080/pets
-    
+  
     # Get a specific pet by its ID
     curl http://localhost:8080/pets/123
     ```
 
 ## 📖 Usage Guide
-
-### Basic Workflow
-
-1.  **Get an OpenAPI Spec:** Create your own, or download one like the [Swagger Petstore](https://petstore3.swagger.io/api/v3/openapi.json) spec.
-2.  **Start the Mock Server:**
-    ```bash
-    go-spec-mock /path/to/your/api-spec.yaml
-    ```
-3.  **Test Your Endpoints:** Use any HTTP client to interact with your mock API.
-    ```bash
-    # List all pets
-    curl http://localhost:8080/pets
-
-    # Create a pet
-    curl -X POST http://localhost:8080/pets
-
-    # Delete a pet
-    curl -X DELETE http://localhost:8080/pets/123
-    ```
 
 ### Insomnia Integration
 
@@ -125,203 +105,6 @@ go install github.com/leslieo2/go-spec-mock@latest
     go-spec-mock ./api-spec.yaml
     ```
 4.  **Test:** Point your frontend application or Insomnia's "Debug" tab to `http://localhost:8080` to test against the live mock server.
-
-## ⚙️ Configuration
-
-### CLI Flags
-
-Customize the server with the following flags:
-
-| Flag                 | Description                                | Default       |
-|----------------------|--------------------------------------------|---------------|
-| `-host`              | The host to bind the server to.            | `localhost`   |
-| `-port`              | The port to run the server on.             | `8080`        |
-| `-metrics-port`      | The port for the metrics server.           | `9090`        |
-| `-read-timeout`      | HTTP server read timeout.                  | `15s`         |
-| `-write-timeout`     | HTTP server write timeout.                 | `15s`         |
-| `-idle-timeout`      | HTTP server idle timeout.                  | `60s`         |
-| `-max-request-size`  | Maximum request size in bytes.             | `10485760`    |
-| `-shutdown-timeout`  | Graceful shutdown timeout.                 | `30s`         |
-
-### Environment Variables
-
-All CLI flags can also be configured via environment variables:
-
-| Environment Variable           | Description                        | Default |
-|--------------------------------|------------------------------------|---------|
-| `GO_SPEC_MOCK_HOST`            | Server host                        | localhost |
-| `GO_SPEC_MOCK_PORT`            | Server port                        | 8080    |
-| `GO_SPEC_MOCK_METRICS_PORT`    | Metrics server port                | 9090    |
-| `GO_SPEC_MOCK_READ_TIMEOUT`    | HTTP read timeout (e.g., "30s")    | 15s     |
-| `GO_SPEC_MOCK_WRITE_TIMEOUT`   | HTTP write timeout (e.g., "30s")   | 15s     |
-| `GO_SPEC_MOCK_IDLE_TIMEOUT`    | HTTP idle timeout (e.g., "60s")    | 60s     |
-| `GO_SPEC_MOCK_MAX_REQUEST_SIZE`| Max request size in bytes          | 10485760 |
-| `GO_SPEC_MOCK_SHUTDOWN_TIMEOUT`| Graceful shutdown timeout (e.g., "30s") | 30s |
-
-**Example:**
-```bash
-# Using environment variables
-GO_SPEC_MOCK_PORT=8081 GO_SPEC_MOCK_METRICS_PORT=9091 go-spec-mock ./examples/petstore.yaml
-
-# Mixed usage (env vars override CLI defaults)
-go-spec-mock ./examples/petstore.yaml -port 8082
-```
-
-### Security Configuration
-
-Secure your mock server with enterprise-grade security features including API key authentication, rate limiting, security headers, and CORS protection.
-
-| Flag                    | Description                                                 | Default   |
-|-------------------------|-------------------------------------------------------------|-----------|
-| `-auth-enabled`         | Enable API key authentication.                              | `false`   |
-| `-auth-config`          | Path to a security configuration file (see below).          | `""`      |
-| `-rate-limit-enabled`   | Enable rate limiting.                                       | `false`   |
-| `-rate-limit-strategy`  | Rate limiting strategy: `ip`, `api_key`, `both`.            | `ip`      |
-| `-rate-limit-rps`       | Global rate limit in requests per second.                   | `100`     |
-| `-generate-key <name>`  | Generate a new API key for the given name and exit.         | `""`      |
-
-#### API Key Authentication
-
-Create API keys using the `-generate-key` flag or configure them manually:
-
-```bash
-# Generate a key
-go-spec-mock ./examples/petstore.yaml -generate-key "my-app"
-
-# List all keys
-go-spec-mock ./examples/petstore.yaml -list-keys
-
-# Revoke a key by setting enabled: false in security.yaml
-```
-
-**security.yaml:**
-```yaml
-auth:
-  enabled: true
-  header_name: "X-API-Key"      # or "Authorization" for Bearer tokens
-  query_param_name: "api_key"
-  keys:
-    - key: "your-key-here"        # Generated or any custom string
-      name: "my-app"
-      enabled: true
-      expires_at: "2024-12-31T23:59:59Z"  # Optional expiration (RFC3339)
-      rate_limit:                        # Optional per-key limits
-        requests_per_second: 50
-        burst_size: 100
-        window_size: "1m"
-      metadata:                          # Optional key metadata
-        department: "engineering"
-        environment: "development"
-        owner: "team-alpha"
-```
-
-**Authentication methods:**
-```bash
-# Header authentication
-curl -H "X-API-Key: your-key-here" http://localhost:8080/pets
-
-# Bearer token authentication
-curl -H "Authorization: Bearer your-key-here" http://localhost:8080/pets
-
-# Query parameter authentication
-curl "http://localhost:8080/pets?api_key=your-key-here"
-```
-
-Authentication is automatically skipped for `/health`, `/ready`, and `/metrics` endpoints.
-
-#### Rate Limiting
-
-Advanced rate limiting with hierarchical limits and DDoS protection:
-
-**Rate Limiting Strategies:**
-- `ip`: Rate limit by client IP address
-- `api_key`: Rate limit by API key
-- `both`: Apply both IP and API key limits (most restrictive)
-
-**Rate Limit Headers:**
-The server returns standard rate limit headers:
-- `X-RateLimit-Limit`: Maximum requests allowed
-- `X-RateLimit-Remaining`: Remaining requests in current window
-- `X-RateLimit-Reset`: Unix timestamp when limit resets
-- `X-RateLimit-Retry-After`: Seconds to wait before retry (when limited)
-
-#### Security Headers & CORS
-
-Enterprise-grade security headers and CORS configuration:
-
-```yaml
-cors:
-  enabled: true
-  allowed_origins:                  # Specific origins (avoid wildcard)
-    - "http://localhost:3000"
-    - "https://yourdomain.com"
-  allowed_methods:                  # HTTP methods to allow
-    - "GET"
-    - "POST"
-    - "PUT"
-    - "DELETE"
-    - "OPTIONS"
-    - "PATCH"
-  allowed_headers:                  # Headers to allow
-    - "Content-Type"
-    - "Authorization"
-    - "Accept"
-    - "X-Requested-With"
-    - "X-API-Key"
-  allow_credentials: false          # Allow cookies/auth headers
-  max_age: 86400                    # 24-hour preflight cache
-
-security:
-  content_security_policy: "default-src 'self'"
-  strict_transport_security: "max-age=31536000; includeSubDomains"
-  x_content_type_options: "nosniff"
-  x_frame_options: "DENY"
-  x_xss_protection: "1; mode=block"
-  allowed_hosts:                    # Host validation
-    - "localhost"
-    - "yourdomain.com"
-```
-
-**Usage:**
-```bash
-# Enable all security features
-go-spec-mock ./examples/petstore.yaml \
-  -auth-config ./security.yaml \
-  -auth-enabled \
-  -rate-limit-enabled \
-  -rate-limit-strategy both \
-  -rate-limit-rps 50
-```
-
-### Observability Endpoints
-
-The server provides built-in observability endpoints:
-
-| Endpoint   | Description                                      |
-|------------|--------------------------------------------------|
-| `/health`  | Health check endpoint with service status        |
-| `/ready`   | Readiness probe for load balancers               |
-| `/metrics` | Prometheus metrics endpoint                      |
-| `/`        | API documentation with available endpoints       |
-
-**Example:**
-```bash
-# Check health status
-curl http://localhost:8080/health
-
-# View Prometheus metrics,5 secs
-curl --max-time 5 http://localhost:8080/metrics
-
-# Check readiness
-curl http://localhost:8080/ready
-```
-
-**Example:**
-
-```bash
-# Run on all network interfaces on port 3000
-go-spec-mock ./api-spec.yaml -host 0.0.0.0 -port 3000
-```
 
 ### Dynamic Status Code Selection
 
@@ -338,6 +121,153 @@ curl "http://localhost:8080/pets/1?__statusCode=404"
 curl "http://localhost:8080/pets?__statusCode=400"
 ```
 
+## ⚙️ Configuration
+
+### Configuration Precedence
+
+Go-Spec-Mock supports flexible configuration with the following precedence:
+
+1.  **CLI flags** (highest priority)
+2.  **Environment variables**
+3.  **Configuration file values**
+4.  **Default values** (lowest priority)
+
+### CLI Flags & Environment Variables
+
+All settings can be configured via CLI flags or environment variables.
+
+#### Server & General Configuration
+
+| Flag | Environment Variable | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-spec-file` | `GO_SPEC_MOCK_SPEC_FILE` | Path to OpenAPI specification file. | `Required` |
+| `-config` | `GO_SPEC_MOCK_CONFIG` | Path to configuration file (YAML/JSON). | `""` |
+| `-host` | `GO_SPEC_MOCK_HOST` | The host to bind the server to. | `localhost` |
+| `-port` | `GO_SPEC_MOCK_PORT` | The port to run the server on. | `8080` |
+| `-metrics-port` | `GO_SPEC_MOCK_METRICS_PORT` | The port for the metrics server. | `9090` |
+| `-read-timeout` | `GO_SPEC_MOCK_READ_TIMEOUT` | HTTP server read timeout. | `15s` |
+| `-write-timeout` | `GO_SPEC_MOCK_WRITE_TIMEOUT` | HTTP server write timeout. | `15s` |
+| `-idle-timeout` | `GO_SPEC_MOCK_IDLE_TIMEOUT` | HTTP server idle timeout. | `60s` |
+| `-max-request-size` | `GO_SPEC_MOCK_MAX_REQUEST_SIZE` | Maximum request size in bytes. | `10485760` |
+| `-shutdown-timeout` | `GO_SPEC_MOCK_SHUTDOWN_TIMEOUT` | Graceful shutdown timeout. | `30s` |
+
+#### Security Configuration
+
+| Flag | Environment Variable | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-auth-enabled` | `GO_SPEC_MOCK_AUTH_ENABLED` | Enable API key authentication. | `false` |
+| `-auth-config` | `GO_SPEC_MOCK_AUTH_CONFIG` | Path to a security configuration file. | `""` |
+| `-rate-limit-enabled` | `GO_SPEC_MOCK_RATE_LIMIT_ENABLED` | Enable rate limiting. | `false` |
+| `-rate-limit-strategy` | `GO_SPEC_MOCK_RATE_LIMIT_STRATEGY` | Strategy: `ip`, `api_key`, `both`. | `ip` |
+| `-rate-limit-rps` | `GO_SPEC_MOCK_RATE_LIMIT_RPS` | Global rate limit in requests per second. | `100` |
+| `-generate-key <name>` | `N/A` | Generate a new API key and exit. | `""` |
+
+### Configuration File
+
+For complex setups, especially involving security, a YAML or JSON configuration file is recommended.
+
+```bash
+# Use a configuration file
+go-spec-mock -config ./config.yaml -spec-file ./examples/petstore.yaml
+```
+
+**Example configuration files are provided:**
+*   `examples/config/go-spec-mock.yaml` - Complete configuration with all options.
+*   `examples/config/minimal.yaml` - Minimal required configuration.
+*   `examples/config/security-focused.yaml` - Security-first configuration.
+
+### Security Features
+
+Secure your mock server with API key authentication, rate limiting, security headers, and CORS. These are best configured via a configuration file.
+
+#### API Key Authentication
+
+Enable with `-auth-enabled` or in a config file. You can generate keys with the `-generate-key` flag.
+
+```bash
+# Generate a key named "my-app"
+go-spec-mock -spec-file ./examples/petstore.yaml -generate-key "my-app"
+```
+
+**Example `config.yaml`:**
+```yaml
+security:
+  auth:
+    enabled: true
+    header_name: "X-API-Key"      # or "Authorization" for Bearer tokens
+    query_param_name: "api_key"
+    keys:
+      - key: "your-generated-key-here"
+        name: "my-app"
+        enabled: true
+```
+
+**Usage:**
+```bash
+# Header authentication
+curl -H "X-API-Key: your-key-here" http://localhost:8080/pets
+
+# Query parameter authentication
+curl "http://localhost:8080/pets?api_key=your-key-here"
+```
+
+#### Rate Limiting
+
+Enable with `-rate-limit-enabled`. The server returns standard `X-RateLimit-*` headers.
+
+**Example `config.yaml`:**
+```yaml
+security:
+  rate_limit:
+    enabled: true
+    strategy: "both" # ip, api_key, or both
+    global:
+      requests_per_second: 100
+      burst_size: 200
+      window_size: "1m"
+```
+
+#### CORS & Security Headers
+
+Configure Cross-Origin Resource Sharing (CORS) and other security headers for enterprise-grade protection.
+
+**Example `config.yaml`:**
+```yaml
+security:
+  cors:
+    enabled: true
+    allowed_origins: ["http://localhost:3000", "https://yourdomain.com"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Content-Type", "Authorization", "X-API-Key"]
+    allow_credentials: false
+    max_age: 86400
+  headers:
+    enabled: true
+    content_security_policy: "default-src 'self'"
+    hsts_max_age: 31536000
+    allowed_hosts: ["localhost", "yourdomain.com"]
+```
+
+### Observability Endpoints
+
+The server provides built-in observability endpoints:
+
+| Endpoint | Description |
+| :--- | :--- |
+| `/` | API documentation with available endpoints |
+| `/health` | Health check endpoint with service status |
+| `/ready` | Readiness probe for load balancers |
+| `/metrics` | Prometheus metrics endpoint (on metrics port) |
+
+**Usage examples:**
+```bash
+# Check health status
+curl http://localhost:8080/health
+
+# View Prometheus metrics (assuming default port 9090)
+curl http://localhost:9090/metrics
+```
+
 ## 🐳 Docker Usage
 
 A `Dockerfile` is included for easy containerization.
@@ -346,18 +276,17 @@ A `Dockerfile` is included for easy containerization.
 # 1. Build the Docker image
 docker build -t go-spec-mock .
 
-# 2. Run the container with custom ports
-# Note: The spec path is relative to the container's /app directory
+# 2. Run the container with a mounted config file
 docker run -p 8080:8080 -p 9090:9090 \
   -v $(pwd)/examples:/app/examples \
-  go-spec-mock:latest ./examples/petstore.yaml
+  go-spec-mock:latest -config ./examples/config/minimal.yaml -spec-file ./examples/petstore.yaml
 
-# 3. Run with custom configuration
+# 3. Run with configuration via environment variables
 docker run -p 8081:8081 -p 9091:9091 \
   -e GO_SPEC_MOCK_PORT=8081 \
   -e GO_SPEC_MOCK_METRICS_PORT=9091 \
-  -v $(pwd)/examples:/app/examples \
-  go-spec-mock:latest ./examples/petstore.yaml
+  -v $(pwd)/examples/petstore.yaml:/app/petstore.yaml \
+  go-spec-mock:latest -spec-file /app/petstore.yaml
 ```
 
 ## 👨‍💻 Development & Contribution
@@ -380,36 +309,37 @@ Contributions are welcome! Please feel free to open an issue or submit a pull re
 
 This project uses a `Makefile` to streamline common development tasks.
 
-| Command              | Description                                            |
-|----------------------|--------------------------------------------------------|
-| `make build`         | Build the `go-spec-mock` binary for your OS.           |
-| `make run-example`   | Run the server with the example `petstore.yaml` spec.  |
-| `make run-example-secure` | Run with security features enabled (auth + rate limiting). |
-| `make generate-key`  | Generate a new API key interactively.                  |
-| `make test`          | Run all unit tests.                                    |
-| `make fmt`           | Format the Go source code.                             |
-| `make lint`          | Run `golangci-lint` to check for code quality issues.  |
-| `make security`      | Run security scan with `gosec`.                        |
-| `make ci`            | Run the full CI pipeline (format, lint, test).         |
-| `make build-all`     | Cross-compile binaries for Linux, macOS, and Windows.  |
-| `make curl-test`     | Run automated `curl` tests against the example server. |
+| Command | Description |
+| :--- | :--- |
+| `make build` | Build the `go-spec-mock` binary for your OS. |
+| `make run-example` | Run the server with the example `petstore.yaml` spec. |
+| `make run-example-secure` | Run with security features enabled. |
+| `make generate-key` | Generate a new API key interactively. |
+| `make test` | Run all unit tests. |
+| `make fmt` | Format the Go source code. |
+| `make lint` | Run `golangci-lint` to check for code quality issues. |
+| `make security` | Run security scan with `gosec`. |
+| `make ci` | Run the full CI pipeline (format, lint, test). |
+| `make build-all` | Cross-compile binaries for Linux, macOS, and Windows. |
+| `make curl-test` | Run automated `curl` tests against the example server. |
 
 ### Project Structure
 
 ```
 .
-├── Makefile              # Development commands
-├── README.md             # This file
-├── go.mod                # Go module definition
-├── main.go               # CLI entry point
+├── Makefile                      # Development commands
+├── README.md                     # This file
+├── go.mod                        # Go module definition
+├── main.go                       # CLI entry point
 ├── examples/
-│   └── petstore.yaml     # Sample OpenAPI spec
-├── security.yaml         # Security configuration template
+│   ├── petstore.yaml             # Sample OpenAPI spec
+│   └── config/                   # Configuration examples
 ├── internal/
-│   ├── parser/           # OpenAPI specification parsing logic
-│   ├── server/           # HTTP server and routing logic
-│   ├── security/         # Authentication and rate limiting
-│   └── observability/    # Logging, metrics, and tracing
+│   ├── config/                   # Configuration management
+│   ├── parser/                   # OpenAPI specification parsing logic
+│   ├── server/                   # HTTP server and routing logic
+│   ├── security/                 # Authentication and rate limiting
+│   └── observability/            # Logging, metrics, and tracing
 ```
 
 ## 🛣️ Roadmap
@@ -450,7 +380,7 @@ The project is currently at **v1.0.0** and is stable for general use. The future
 - [x] Configuration via CLI flags and environment variables
 - [x] Customizable server timeouts and ports
 - [ ] HTTPS/TLS support
-- [ ] Configuration file support
+- [x] Configuration file support (YAML/JSON)
 
 #### 📦 Deployment
 - [ ] Official Docker images on Docker Hub

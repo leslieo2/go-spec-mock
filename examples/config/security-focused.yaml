@@ -1,0 +1,71 @@
+# Security-focused configuration for Go-Spec-Mock
+# This configuration prioritizes security and monitoring
+
+server:
+  host: "localhost"
+  port: "8080"
+  metrics_port: "9090"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "60s"
+  max_request_size: 5242880  # 5MB (smaller for security)
+  shutdown_timeout: "30s"
+
+# Comprehensive security configuration
+security:
+  auth:
+    enabled: true
+    header_name: "Authorization"
+    query_param_name: "api_key"
+    keys:
+      - key: "admin-key-secure"
+        name: "admin"
+        enabled: true
+      - key: "readonly-key-secure"
+        name: "readonly"
+        enabled: true
+  rate_limit:
+    enabled: true
+    strategy: "both"  # Rate limit by both IP and API key
+    global:
+      requests_per_second: 50
+      burst_size: 100
+      window_size: "1m"
+    by_ip:
+      requests_per_second: 30
+      burst_size: 60
+      window_size: "1m"
+    by_api_key:
+      admin-key-secure:
+        requests_per_second: 100
+        burst_size: 200
+        window_size: "1m"
+      readonly-key-secure:
+        requests_per_second: 20
+        burst_size: 40
+        window_size: "1m"
+  headers:
+    enabled: true
+    content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    hsts_max_age: 31536000
+    allowed_hosts: ["localhost", "127.0.0.1"]
+  cors:
+    enabled: true
+    allowed_origins: ["https://localhost:3000", "https://127.0.0.1:3000"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Content-Type", "Authorization", "Accept", "X-Requested-With", "X-API-Key"]
+    allow_credentials: true
+    max_age: 3600
+
+# Enhanced observability
+observability:
+  logging:
+    level: "debug"
+    format: "json"
+  metrics:
+    enabled: true
+    path: "/metrics"
+  tracing:
+    enabled: true
+
+spec_file: "./examples/petstore.yaml"

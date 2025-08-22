@@ -7,17 +7,19 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/leslieo2/go-spec-mock/internal/config"
 )
 
 func TestNewLogger(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  LogConfig
+		config  config.LoggingConfig
 		wantErr bool
 	}{
 		{
 			name: "default configuration",
-			config: LogConfig{
+			config: config.LoggingConfig{
 				Level:       "info",
 				Format:      "json",
 				Output:      "stdout",
@@ -27,7 +29,7 @@ func TestNewLogger(t *testing.T) {
 		},
 		{
 			name: "development mode",
-			config: LogConfig{
+			config: config.LoggingConfig{
 				Level:       "debug",
 				Format:      "console",
 				Output:      "stdout",
@@ -37,7 +39,7 @@ func TestNewLogger(t *testing.T) {
 		},
 		{
 			name: "invalid log level",
-			config: LogConfig{
+			config: config.LoggingConfig{
 				Level:       "invalid",
 				Format:      "json",
 				Output:      "stdout",
@@ -98,22 +100,22 @@ func TestLogger_JSONOutput(t *testing.T) {
 }
 
 func TestLogger_DefaultLogConfig(t *testing.T) {
-	config := DefaultLogConfig()
+	cfg := config.DefaultLoggingConfig()
 
-	expected := LogConfig{
+	expected := config.LoggingConfig{
 		Level:       "info",
 		Format:      "json",
 		Output:      "stdout",
 		Development: false,
 	}
 
-	if config != expected {
-		t.Errorf("DefaultLogConfig() = %+v, want %+v", config, expected)
+	if cfg != expected {
+		t.Errorf("DefaultLoggingConfig() = %+v, want %+v", cfg, expected)
 	}
 }
 
 func TestLogger_Sync(t *testing.T) {
-	logger, err := NewLogger(DefaultLogConfig())
+	logger, err := NewLogger(config.DefaultLoggingConfig())
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}

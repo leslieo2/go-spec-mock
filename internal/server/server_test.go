@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"go.uber.org/zap"
 )
@@ -49,10 +49,7 @@ func TestParseStatusCode(t *testing.T) {
 }
 
 func TestDefaultCORSConfig(t *testing.T) {
-	cfg := defaultCORSConfig()
-	if cfg == nil {
-		t.Fatal("defaultCORSConfig() returned nil")
-	}
+	cfg := config.DefaultCORSConfig()
 
 	if !cfg.Enabled {
 		t.Error("Expected CORS to be enabled by default")
@@ -73,13 +70,17 @@ func TestDefaultCORSConfig(t *testing.T) {
 
 func TestCORSMiddleware(t *testing.T) {
 	server := &Server{
-		corsCfg: &CORSConfig{
-			Enabled:          true,
-			AllowedOrigins:   []string{"*"},
-			AllowedMethods:   []string{"GET", "POST"},
-			AllowedHeaders:   []string{"Content-Type"},
-			AllowCredentials: true,
-			MaxAge:           3600,
+		config: &config.Config{
+			Security: config.SecurityConfig{
+				CORS: config.CORSConfig{
+					Enabled:          true,
+					AllowedOrigins:   []string{"*"},
+					AllowedMethods:   []string{"GET", "POST"},
+					AllowedHeaders:   []string{"Content-Type"},
+					AllowCredentials: true,
+					MaxAge:           3600,
+				},
+			},
 		},
 	}
 
@@ -110,11 +111,15 @@ func TestCORSMiddleware(t *testing.T) {
 
 func TestCORSMiddleware_Preflight(t *testing.T) {
 	server := &Server{
-		corsCfg: &CORSConfig{
-			Enabled:        true,
-			AllowedOrigins: []string{"*"},
-			AllowedMethods: []string{"GET", "POST"},
-			AllowedHeaders: []string{"Content-Type"},
+		config: &config.Config{
+			Security: config.SecurityConfig{
+				CORS: config.CORSConfig{
+					Enabled:        true,
+					AllowedOrigins: []string{"*"},
+					AllowedMethods: []string{"GET", "POST"},
+					AllowedHeaders: []string{"Content-Type"},
+				},
+			},
 		},
 	}
 
@@ -137,8 +142,12 @@ func TestCORSMiddleware_Preflight(t *testing.T) {
 
 func TestCORSMiddleware_Disabled(t *testing.T) {
 	server := &Server{
-		corsCfg: &CORSConfig{
-			Enabled: false,
+		config: &config.Config{
+			Security: config.SecurityConfig{
+				CORS: config.CORSConfig{
+					Enabled: false,
+				},
+			},
 		},
 	}
 
@@ -161,7 +170,11 @@ func TestCORSMiddleware_Disabled(t *testing.T) {
 
 func TestRequestSizeLimitMiddleware(t *testing.T) {
 	server := &Server{
-		maxReqSize: 1024, // 1KB limit
+		config: &config.Config{
+			Server: config.ServerConfig{
+				MaxRequestSize: 1024, // 1KB limit
+			},
+		},
 	}
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +208,11 @@ func TestRequestSizeLimitMiddleware(t *testing.T) {
 
 func TestRequestSizeLimitMiddleware_NoLimit(t *testing.T) {
 	server := &Server{
-		maxReqSize: 0, // No limit
+		config: &config.Config{
+			Server: config.ServerConfig{
+				MaxRequestSize: 0, // No limit
+			},
+		},
 	}
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -238,11 +255,17 @@ func TestLoggingMiddleware(t *testing.T) {
 
 func TestApplyMiddleware(t *testing.T) {
 	server := &Server{
-		corsCfg: &CORSConfig{
-			Enabled: true,
+		config: &config.Config{
+			Security: config.SecurityConfig{
+				CORS: config.CORSConfig{
+					Enabled: true,
+				},
+			},
+			Server: config.ServerConfig{
+				MaxRequestSize: 1024,
+			},
 		},
-		maxReqSize: 1024,
-		logger:     &observability.Logger{Logger: zap.NewNop()},
+		logger: &observability.Logger{Logger: zap.NewNop()},
 	}
 
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -288,13 +311,15 @@ func TestResponseWriter(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	// Test invalid spec file
-	_, err := New("nonexistent.yaml", "localhost", "8080", nil, "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{SpecFile: "nonexistent.yaml"}
+	_, err := New(cfg)
 	if err == nil {
 		t.Error("Expected error for nonexistent spec file")
 	}
 
 	// Test with empty values
-	_, err = New("", "", "", nil, "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg = &config.Config{SpecFile: ""}
+	_, err = New(cfg)
 	if err == nil {
 		t.Error("Expected error for empty spec file")
 	}

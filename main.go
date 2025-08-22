@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
@@ -19,16 +18,16 @@ func main() {
 	// Parse CLI flags
 	configFile := flag.String("config", "", "Path to configuration file (YAML or JSON)")
 	specFile := flag.String("spec-file", "", "Path to OpenAPI specification file")
-	port := flag.String("port", getEnvDefault("GO_SPEC_MOCK_PORT", "8080"), "Port to run the mock server on")
-	host := flag.String("host", getEnvDefault("GO_SPEC_MOCK_HOST", "localhost"), "Host to run the mock server on")
-	metricsPort := flag.String("metrics-port", getEnvDefault("GO_SPEC_MOCK_METRICS_PORT", "9090"), "Port to run the metrics server on")
+	port := flag.String("port", "8080", "Port to run the mock server on")
+	host := flag.String("host", "localhost", "Host to run the mock server on")
+	metricsPort := flag.String("metrics-port", "9090", "Port to run the metrics server on")
 
 	// Server configuration
-	readTimeout := flag.Duration("read-timeout", getDurationEnvDefault("GO_SPEC_MOCK_READ_TIMEOUT", 15*time.Second), "HTTP server read timeout")
-	writeTimeout := flag.Duration("write-timeout", getDurationEnvDefault("GO_SPEC_MOCK_WRITE_TIMEOUT", 15*time.Second), "HTTP server write timeout")
-	idleTimeout := flag.Duration("idle-timeout", getDurationEnvDefault("GO_SPEC_MOCK_IDLE_TIMEOUT", 60*time.Second), "HTTP server idle timeout")
-	maxRequestSize := flag.Int64("max-request-size", getInt64EnvDefault("GO_SPEC_MOCK_MAX_REQUEST_SIZE", 10*1024*1024), "Maximum request size in bytes")
-	shutdownTimeout := flag.Duration("shutdown-timeout", getDurationEnvDefault("GO_SPEC_MOCK_SHUTDOWN_TIMEOUT", 30*time.Second), "Graceful shutdown timeout")
+	readTimeout := flag.Duration("read-timeout", 15*time.Second, "HTTP server read timeout")
+	writeTimeout := flag.Duration("write-timeout", 15*time.Second, "HTTP server write timeout")
+	idleTimeout := flag.Duration("idle-timeout", 60*time.Second, "HTTP server idle timeout")
+	maxRequestSize := flag.Int64("max-request-size", 10*1024*1024, "Maximum request size in bytes")
+	shutdownTimeout := flag.Duration("shutdown-timeout", 30*time.Second, "Graceful shutdown timeout")
 
 	// Security flags
 	authEnabled := flag.Bool("auth-enabled", false, "Enable API key authentication")
@@ -83,12 +82,9 @@ func main() {
 		}
 	}
 
-	// Use unified security configuration from config file
-	securityConfig := &cfg.Security
-
 	// Handle key generation
 	if *generateKey != "" {
-		authManager := security.NewAuthManager(&securityConfig.Auth)
+		authManager := security.NewAuthManager(&cfg.Security.Auth)
 		apiKey, err := authManager.GenerateAPIKey(*generateKey)
 		if err != nil {
 			log.Fatalf("Failed to generate API key: %v", err)
@@ -106,61 +102,24 @@ func main() {
 	}
 
 	// Create mock server with configuration
-	mockServer, err := server.New(
-		cfg.SpecFile,
-		cfg.Server.Host,
-		cfg.Server.Port,
-		securityConfig,
-		cfg.Server.MetricsPort,
-		cfg.Server.ReadTimeout,
-		cfg.Server.WriteTimeout,
-		cfg.Server.IdleTimeout,
-		cfg.Server.ShutdownTimeout,
-		cfg.Server.MaxRequestSize,
-	)
+	mockServer, err := server.New(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create mock server: %v", err)
 	}
 
-	log.Printf("Starting mock server for %s on %s", cfg.SpecFile, cfg.GetServerAddress())
-	if securityConfig.Auth.Enabled {
+	log.Printf("Starting mock server for %s on %s:%s", cfg.SpecFile, cfg.Server.Host, cfg.Server.Port)
+	if cfg.Security.Auth.Enabled {
 		log.Printf("API key authentication enabled")
 	}
-	if securityConfig.RateLimit.Enabled {
+	if cfg.Security.RateLimit.Enabled {
 		log.Printf("Rate limiting enabled (strategy: %s, rps: %d)",
-			securityConfig.RateLimit.Strategy,
-			securityConfig.RateLimit.Global.RequestsPerSecond)
+			cfg.Security.RateLimit.Strategy,
+			cfg.Security.RateLimit.Global.RequestsPerSecond)
 	}
 
 	if err := mockServer.Start(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
-}
-
-// Helper functions for environment variable defaults
-func getEnvDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getDurationEnvDefault(key string, defaultValue time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if duration, err := time.ParseDuration(value); err == nil {
-			return duration
-		}
-	}
-	return defaultValue
-}
-
-func getInt64EnvDefault(key string, defaultValue int64) int64 {
-	if value := os.Getenv(key); value != "" {
-		if intVal, err := strconv.ParseInt(value, 10, 64); err == nil {
-			return intVal
-		}
-	}
-	return defaultValue
 }
 
 // printUsage prints the usage information

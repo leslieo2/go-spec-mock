@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/leslieo2/go-spec-mock/internal/config"
 )
 
 type APIKey struct {
@@ -20,53 +22,16 @@ type APIKey struct {
 	CreatedAt time.Time         `json:"created_at" yaml:"created_at"`
 	ExpiresAt *time.Time        `json:"expires_at,omitempty" yaml:"expires_at,omitempty"`
 	LastUsed  *time.Time        `json:"last_used,omitempty" yaml:"last_used,omitempty"`
-	RateLimit *RateLimit        `json:"rate_limit,omitempty" yaml:"rate_limit,omitempty"`
 	Metadata  map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-}
-
-type RateLimit struct {
-	RequestsPerSecond int           `json:"requests_per_second" yaml:"requests_per_second"`
-	BurstSize         int           `json:"burst_size" yaml:"burst_size"`
-	WindowSize        time.Duration `json:"window_size" yaml:"window_size"`
 }
 
 type AuthManager struct {
 	mu     sync.RWMutex
 	keys   map[string]*APIKey
-	config *AuthConfig
+	config *config.AuthConfig
 }
 
-type AuthConfig struct {
-	Enabled        bool             `json:"enabled" yaml:"enabled"`
-	HeaderName     string           `json:"header_name" yaml:"header_name"`
-	QueryParamName string           `json:"query_param_name" yaml:"query_param_name"`
-	Keys           []*APIKey        `json:"keys" yaml:"keys"`
-	RateLimit      *GlobalRateLimit `json:"rate_limit" yaml:"rate_limit"`
-}
-
-type GlobalRateLimit struct {
-	RequestsPerSecond int           `json:"requests_per_second" yaml:"requests_per_second"`
-	BurstSize         int           `json:"burst_size" yaml:"burst_size"`
-	WindowSize        time.Duration `json:"window_size" yaml:"window_size"`
-	Enabled           bool          `json:"enabled" yaml:"enabled"`
-}
-
-func DefaultAuthConfig() *AuthConfig {
-	return &AuthConfig{
-		Enabled:        false,
-		HeaderName:     "X-API-Key",
-		QueryParamName: "api_key",
-		Keys:           []*APIKey{},
-		RateLimit: &GlobalRateLimit{
-			Enabled:           true,
-			RequestsPerSecond: 100,
-			BurstSize:         200,
-			WindowSize:        time.Minute,
-		},
-	}
-}
-
-func NewAuthManager(config *AuthConfig) *AuthManager {
+func NewAuthManager(config *config.AuthConfig) *AuthManager {
 	am := &AuthManager{
 		keys:   make(map[string]*APIKey),
 		config: config,
@@ -74,7 +39,14 @@ func NewAuthManager(config *AuthConfig) *AuthManager {
 
 	if config != nil {
 		for _, key := range config.Keys {
-			am.keys[key.Key] = key
+			am.keys[key.Key] = &APIKey{
+				Key:       key.Key,
+				Name:      key.Name,
+				Enabled:   key.Enabled,
+				CreatedAt: key.CreatedAt,
+				ExpiresAt: key.ExpiresAt,
+				Metadata:  key.Metadata,
+			}
 		}
 	}
 

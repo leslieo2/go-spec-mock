@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leslieo2/go-spec-mock/internal/security"
 	"gopkg.in/yaml.v3"
 )
 
@@ -176,7 +175,7 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 	if flags.RateLimitRPS != nil && *flags.RateLimitRPS > 0 {
 		if config.Security.RateLimit.Global == nil {
-			config.Security.RateLimit.Global = &security.GlobalRateLimit{
+			config.Security.RateLimit.Global = &GlobalRateLimit{
 				RequestsPerSecond: *flags.RateLimitRPS,
 				BurstSize:         200,
 				WindowSize:        time.Minute,

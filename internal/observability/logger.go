@@ -3,20 +3,15 @@ package observability
 import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/leslieo2/go-spec-mock/internal/config"
 )
 
 type Logger struct {
 	*zap.Logger
 }
 
-type LogConfig struct {
-	Level       string `json:"level" yaml:"level"`
-	Format      string `json:"format" yaml:"format"`
-	Output      string `json:"output" yaml:"output"`
-	Development bool   `json:"development" yaml:"development"`
-}
-
-func NewLogger(config LogConfig) (*Logger, error) {
+func NewLogger(config config.LoggingConfig) (*Logger, error) {
 	var zapConfig zap.Config
 
 	if config.Development {
@@ -49,13 +44,4 @@ func NewLogger(config LogConfig) (*Logger, error) {
 
 func (l *Logger) Sync() error {
 	return l.Logger.Sync()
-}
-
-func DefaultLogConfig() LogConfig {
-	return LogConfig{
-		Level:       "info",
-		Format:      "json",
-		Output:      "stdout",
-		Development: false,
-	}
 }

@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/leslieo2/go-spec-mock/internal/config"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
 func TestNewTracer(t *testing.T) {
-	tracer, err := NewTracer(DefaultTraceConfig())
+	tracer, err := NewTracer(config.DefaultTracingConfig())
 	if err != nil {
 		t.Fatalf("NewTracer() returned error: %v", err)
 	}
@@ -25,7 +26,7 @@ func TestNewTracer(t *testing.T) {
 }
 
 func TestTracer_StartSpan(t *testing.T) {
-	tracer, err := NewTracer(DefaultTraceConfig())
+	tracer, err := NewTracer(config.DefaultTracingConfig())
 	if err != nil {
 		t.Fatalf("NewTracer() returned error: %v", err)
 	}
@@ -51,7 +52,7 @@ func TestTracer_StartSpan(t *testing.T) {
 }
 
 func TestTracer_StartSpan_EmptyAttributes(t *testing.T) {
-	tracer, err := NewTracer(DefaultTraceConfig())
+	tracer, err := NewTracer(config.DefaultTracingConfig())
 	if err != nil {
 		t.Fatalf("NewTracer() returned error: %v", err)
 	}
@@ -68,7 +69,7 @@ func TestTracer_StartSpan_EmptyAttributes(t *testing.T) {
 }
 
 func TestTracer_MultipleSpans(t *testing.T) {
-	tracer, err := NewTracer(DefaultTraceConfig())
+	tracer, err := NewTracer(config.DefaultTracingConfig())
 	if err != nil {
 		t.Fatalf("NewTracer() returned error: %v", err)
 	}
@@ -96,7 +97,7 @@ func TestTracer_MultipleSpans(t *testing.T) {
 }
 
 func TestTracer_ContextPropagation(t *testing.T) {
-	tracer, err := NewTracer(DefaultTraceConfig())
+	tracer, err := NewTracer(config.DefaultTracingConfig())
 	if err != nil {
 		t.Fatalf("NewTracer() returned error: %v", err)
 	}
@@ -116,24 +117,8 @@ func TestTracer_ContextPropagation(t *testing.T) {
 	span.End()
 }
 
-func TestDefaultTraceConfig(t *testing.T) {
-	config := DefaultTraceConfig()
-
-	expected := TraceConfig{
-		Enabled:     false,
-		Exporter:    "stdout",
-		ServiceName: "go-spec-mock",
-		Environment: "production",
-		Version:     "1.0.0",
-	}
-
-	if config != expected {
-		t.Errorf("DefaultTraceConfig() = %+v, want %+v", config, expected)
-	}
-}
-
 func TestTracer_ConcurrentSpans(t *testing.T) {
-	tracer, err := NewTracer(DefaultTraceConfig())
+	tracer, err := NewTracer(config.DefaultTracingConfig())
 	if err != nil {
 		t.Fatalf("NewTracer() returned error: %v", err)
 	}
@@ -157,7 +142,7 @@ func TestTracer_ConcurrentSpans(t *testing.T) {
 }
 
 func TestTracer_NilContext(t *testing.T) {
-	tracer, err := NewTracer(DefaultTraceConfig())
+	tracer, err := NewTracer(config.DefaultTracingConfig())
 	if err != nil {
 		t.Fatalf("NewTracer() returned error: %v", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/assert"
 )
@@ -30,7 +31,7 @@ func (mc *MockClock) Advance(d time.Duration) {
 	mc.now = mc.now.Add(d)
 }
 
-func newTestRateLimiter(config *RateLimitConfig) (*RateLimiter, *MockClock) {
+func newTestRateLimiter(config *config.RateLimitConfig) (*RateLimiter, *MockClock) {
 	if config.CleanupInterval == 0 {
 		config.CleanupInterval = 5 * time.Minute
 	}
@@ -46,16 +47,16 @@ func newTestRateLimiter(config *RateLimitConfig) (*RateLimiter, *MockClock) {
 }
 
 func TestRateLimiter_Success(t *testing.T) {
-	config := &RateLimitConfig{
+	cfg := &config.RateLimitConfig{
 		Enabled:  true,
 		Strategy: "ip",
-		ByIP: &RateLimit{
+		ByIP: &config.RateLimit{
 			RequestsPerSecond: 5,
 			BurstSize:         10,
 			WindowSize:        time.Second,
 		},
 	}
-	rl, _ := newTestRateLimiter(config)
+	rl, _ := newTestRateLimiter(cfg)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.RemoteAddr = "192.0.2.1:12345"
@@ -73,16 +74,16 @@ func TestRateLimiter_Success(t *testing.T) {
 }
 
 func TestRateLimiter_Failure_Exceeded(t *testing.T) {
-	config := &RateLimitConfig{
+	cfg := &config.RateLimitConfig{
 		Enabled:  true,
 		Strategy: "ip",
-		ByIP: &RateLimit{
+		ByIP: &config.RateLimit{
 			RequestsPerSecond: 2,
 			BurstSize:         2,
 			WindowSize:        time.Minute, // Use a long window to prevent reset during test
 		},
 	}
-	rl, _ := newTestRateLimiter(config)
+	rl, _ := newTestRateLimiter(cfg)
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -107,16 +108,16 @@ func TestRateLimiter_Failure_Exceeded(t *testing.T) {
 }
 
 func TestRateLimiter_PerIP(t *testing.T) {
-	config := &RateLimitConfig{
+	cfg := &config.RateLimitConfig{
 		Enabled:  true,
 		Strategy: "ip",
-		ByIP: &RateLimit{
+		ByIP: &config.RateLimit{
 			RequestsPerSecond: 1,
 			BurstSize:         1,
 			WindowSize:        time.Minute,
 		},
 	}
-	rl, _ := newTestRateLimiter(config)
+	rl, _ := newTestRateLimiter(cfg)
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -145,10 +146,10 @@ func TestRateLimiter_PerIP(t *testing.T) {
 }
 
 func TestRateLimiter_Disabled(t *testing.T) {
-	config := &RateLimitConfig{
+	cfg := &config.RateLimitConfig{
 		Enabled: false, // Rate limiting is disabled
 	}
-	rl, _ := newTestRateLimiter(config)
+	rl, _ := newTestRateLimiter(cfg)
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -166,16 +167,16 @@ func TestRateLimiter_Disabled(t *testing.T) {
 }
 
 func TestRateLimiter_WindowReset(t *testing.T) {
-	config := &RateLimitConfig{
+	cfg := &config.RateLimitConfig{
 		Enabled:  true,
 		Strategy: "ip",
-		ByIP: &RateLimit{
+		ByIP: &config.RateLimit{
 			RequestsPerSecond: 1,
 			BurstSize:         1,
 			WindowSize:        time.Second, // 1 second window
 		},
 	}
-	rl, _ := newTestRateLimiter(config)
+	rl, _ := newTestRateLimiter(cfg)
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -247,16 +248,16 @@ func TestGetClientIP(t *testing.T) {
 }
 
 func TestRateLimitStatusHeaders(t *testing.T) {
-	config := &RateLimitConfig{
+	cfg := &config.RateLimitConfig{
 		Enabled:  true,
 		Strategy: "ip",
-		ByIP: &RateLimit{
+		ByIP: &config.RateLimit{
 			RequestsPerSecond: 10,
 			BurstSize:         10,
 			WindowSize:        time.Minute,
 		},
 	}
-	rl, clock := newTestRateLimiter(config)
+	rl, clock := newTestRateLimiter(cfg)
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

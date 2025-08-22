@@ -7,19 +7,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAuthMiddleware_Success(t *testing.T) {
 	apiKey, _ := generateRandomKey(32)
-	config := &AuthConfig{
+	cfg := &config.AuthConfig{
 		Enabled:    true,
 		HeaderName: "X-API-Key",
-		Keys: []*APIKey{
+		Keys: []config.APIKeyConfig{
 			{Key: apiKey, Enabled: true},
 		},
 	}
-	am := NewAuthManager(config)
+	am := NewAuthManager(cfg)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-API-Key", apiKey)
@@ -40,14 +41,14 @@ func TestAuthMiddleware_Success(t *testing.T) {
 }
 
 func TestAuthMiddleware_Failure_InvalidKey(t *testing.T) {
-	config := &AuthConfig{
+	cfg := &config.AuthConfig{
 		Enabled:    true,
 		HeaderName: "X-API-Key",
-		Keys: []*APIKey{
+		Keys: []config.APIKeyConfig{
 			{Key: "valid-key", Enabled: true},
 		},
 	}
-	am := NewAuthManager(config)
+	am := NewAuthManager(cfg)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-API-Key", "invalid-key")
@@ -63,11 +64,11 @@ func TestAuthMiddleware_Failure_InvalidKey(t *testing.T) {
 }
 
 func TestAuthMiddleware_Failure_NoKey(t *testing.T) {
-	config := &AuthConfig{
+	cfg := &config.AuthConfig{
 		Enabled:    true,
 		HeaderName: "X-API-Key",
 	}
-	am := NewAuthManager(config)
+	am := NewAuthManager(cfg)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
@@ -82,10 +83,10 @@ func TestAuthMiddleware_Failure_NoKey(t *testing.T) {
 }
 
 func TestAuthMiddleware_Disabled(t *testing.T) {
-	config := &AuthConfig{
+	cfg := &config.AuthConfig{
 		Enabled: false, // Auth is disabled
 	}
-	am := NewAuthManager(config)
+	am := NewAuthManager(cfg)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
@@ -100,14 +101,14 @@ func TestAuthMiddleware_Disabled(t *testing.T) {
 
 func TestAuthMiddleware_ExpiredKey(t *testing.T) {
 	expiredTime := time.Now().Add(-1 * time.Hour)
-	config := &AuthConfig{
+	cfg := &config.AuthConfig{
 		Enabled:    true,
 		HeaderName: "X-API-Key",
-		Keys: []*APIKey{
+		Keys: []config.APIKeyConfig{
 			{Key: "expired-key", Enabled: true, ExpiresAt: &expiredTime},
 		},
 	}
-	am := NewAuthManager(config)
+	am := NewAuthManager(cfg)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-API-Key", "expired-key")
@@ -123,11 +124,11 @@ func TestAuthMiddleware_ExpiredKey(t *testing.T) {
 }
 
 func TestExtractAPIKey(t *testing.T) {
-	config := &AuthConfig{
+	cfg := &config.AuthConfig{
 		HeaderName:     "X-Custom-API-Key",
 		QueryParamName: "token",
 	}
-	am := NewAuthManager(config)
+	am := NewAuthManager(cfg)
 
 	testCases := []struct {
 		name    string

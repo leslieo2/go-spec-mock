@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
 	"github.com/leslieo2/go-spec-mock/internal/security"
@@ -20,27 +21,16 @@ import (
 )
 
 type Server struct {
-	parser     *parser.Parser
-	host       string
-	port       string
-	server     *http.Server
-	corsCfg    *CORSConfig
-	maxReqSize int64
-	cache      *sync.Map
-	routes     []parser.Route
-	routeMap   map[string][]parser.Route
-
-	// Server configuration
-	metricsPort     string
-	readTimeout     time.Duration
-	writeTimeout    time.Duration
-	idleTimeout     time.Duration
-	shutdownTimeout time.Duration
+	parser   *parser.Parser
+	config   *config.Config
+	server   *http.Server
+	cache    *sync.Map
+	routes   []parser.Route
+	routeMap map[string][]parser.Route
 
 	// Security
-	authManager    *security.AuthManager
-	rateLimiter    *security.RateLimiter
-	securityConfig *security.SecurityConfig
+	authManager *security.AuthManager
+	rateLimiter *security.RateLimiter
 
 	// Observability
 	logger    *observability.Logger
@@ -49,40 +39,27 @@ type Server struct {
 	startTime time.Time
 }
 
-type CORSConfig struct {
-	Enabled          bool
-	AllowedOrigins   []string
-	AllowedMethods   []string
-	AllowedHeaders   []string
-	AllowCredentials bool
-	MaxAge           int
-}
-
-func New(specFile, host, port string, securityConfig *security.SecurityConfig, metricsPort string, readTimeout, writeTimeout, idleTimeout, shutdownTimeout time.Duration, maxRequestSize int64) (*Server, error) {
-	p, err := parser.New(specFile)
+func New(cfg *config.Config) (*Server, error) {
+	p, err := parser.New(cfg.SpecFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse OpenAPI spec: %w", err)
 	}
 
 	// Initialize observability
-	logger, err := observability.NewLogger(observability.DefaultLogConfig())
+	logger, err := observability.NewLogger(cfg.Observability.Logging)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %w", err)
 	}
 
 	metrics := observability.NewMetrics()
-	tracer, err := observability.NewTracer(observability.DefaultTraceConfig())
+	tracer, err := observability.NewTracer(cfg.Observability.Tracing)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
 	}
 
 	// Initialize security
-	if securityConfig == nil {
-		securityConfig = security.DefaultSecurityConfig()
-	}
-
-	authManager := security.NewAuthManager(&securityConfig.Auth)
-	rateLimiter := security.NewRateLimiter(&securityConfig.RateLimit)
+	authManager := security.NewAuthManager(&cfg.Security.Auth)
+	rateLimiter := security.NewRateLimiter(&cfg.Security.RateLimit)
 
 	// Pre-build routes and route map
 	routes := p.GetRoutes()
@@ -92,49 +69,18 @@ func New(specFile, host, port string, securityConfig *security.SecurityConfig, m
 	}
 
 	return &Server{
-		parser:          p,
-		host:            host,
-		port:            port,
-		corsCfg:         corsConfigFromSecurity(securityConfig.CORS),
-		maxReqSize:      maxRequestSize,
-		metricsPort:     metricsPort,
-		readTimeout:     readTimeout,
-		writeTimeout:    writeTimeout,
-		idleTimeout:     idleTimeout,
-		shutdownTimeout: shutdownTimeout,
-		cache:           &sync.Map{},
-		routes:          routes,
-		routeMap:        routeMap,
-		authManager:     authManager,
-		rateLimiter:     rateLimiter,
-		securityConfig:  securityConfig,
-		logger:          logger,
-		metrics:         metrics,
-		tracer:          tracer,
-		startTime:       time.Now(),
+		parser:      p,
+		config:      cfg,
+		cache:       &sync.Map{},
+		routes:      routes,
+		routeMap:    routeMap,
+		authManager: authManager,
+		rateLimiter: rateLimiter,
+		logger:      logger,
+		metrics:     metrics,
+		tracer:      tracer,
+		startTime:   time.Now(),
 	}, nil
-}
-
-func defaultCORSConfig() *CORSConfig {
-	return &CORSConfig{
-		Enabled:          true,
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"},
-		AllowCredentials: false,
-		MaxAge:           86400, // 24 hours
-	}
-}
-
-func corsConfigFromSecurity(corsCfg security.CORSConfig) *CORSConfig {
-	return &CORSConfig{
-		Enabled:          corsCfg.Enabled,
-		AllowedOrigins:   corsCfg.AllowedOrigins,
-		AllowedMethods:   corsCfg.AllowedMethods,
-		AllowedHeaders:   corsCfg.AllowedHeaders,
-		AllowCredentials: corsCfg.AllowCredentials,
-		MaxAge:           corsCfg.MaxAge,
-	}
 }
 
 func (s *Server) Start() error {
@@ -165,17 +111,17 @@ func (s *Server) Start() error {
 	handler := s.applyMiddleware(mux)
 
 	s.server = &http.Server{
-		Addr:           fmt.Sprintf("%s:%s", s.host, s.port),
+		Addr:           fmt.Sprintf("%s:%s", s.config.Server.Host, s.config.Server.Port),
 		Handler:        handler,
-		ReadTimeout:    s.readTimeout,
-		WriteTimeout:   s.writeTimeout,
-		IdleTimeout:    s.idleTimeout,
+		ReadTimeout:    s.config.Server.ReadTimeout,
+		WriteTimeout:   s.config.Server.WriteTimeout,
+		IdleTimeout:    s.config.Server.IdleTimeout,
 		MaxHeaderBytes: 1 << 20, // 1MB max header size
 	}
 
 	s.logger.Logger.Info("Starting server",
-		zap.String("host", s.host),
-		zap.String("port", s.port),
+		zap.String("host", s.config.Server.Host),
+		zap.String("port", s.config.Server.Port),
 		zap.Int("routes", len(s.routes)),
 	)
 
@@ -187,12 +133,12 @@ func (s *Server) Start() error {
 		metricsMux := http.NewServeMux()
 		metricsMux.Handle("/metrics", s.metrics.Handler())
 		metricsServer = &http.Server{
-			Addr:              fmt.Sprintf(":%s", s.metricsPort),
+			Addr:              fmt.Sprintf(":%s", s.config.Server.MetricsPort),
 			Handler:           metricsMux,
 			ReadHeaderTimeout: 5 * time.Second,
 		}
 		s.logger.Logger.Info("Starting metrics server",
-			zap.String("port", s.metricsPort),
+			zap.String("port", s.config.Server.MetricsPort),
 		)
 		go func() {
 			if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -216,7 +162,7 @@ func (s *Server) Start() error {
 	s.metrics.SetHealthStatus(false)
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.config.Server.ShutdownTimeout)
 	defer cancel()
 
 	// Shutdown metrics server first, then main server

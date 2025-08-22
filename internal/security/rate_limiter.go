@@ -9,24 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/time/rate"
 )
 
 type RateLimiter struct {
 	limiters *cache.Cache
-	config   *RateLimitConfig
+	config   *config.RateLimitConfig
 	clock    Clock
-}
-
-type RateLimitConfig struct {
-	Enabled         bool                  `json:"enabled" yaml:"enabled"`
-	Strategy        string                `json:"strategy" yaml:"strategy"` // "api_key", "ip", "both"
-	Global          *GlobalRateLimit      `json:"global" yaml:"global"`
-	ByAPIKey        map[string]*RateLimit `json:"by_api_key" yaml:"by_api_key"`
-	ByIP            *RateLimit            `json:"by_ip" yaml:"by_ip"`
-	CleanupInterval time.Duration         `json:"cleanup_interval" yaml:"cleanup_interval"`
-	MaxCacheSize    int                   `json:"max_cache_size" yaml:"max_cache_size"`
 }
 
 type Clock interface {
@@ -39,7 +30,7 @@ func (RealClock) Now() time.Time {
 	return time.Now()
 }
 
-func NewRateLimiter(config *RateLimitConfig) *RateLimiter {
+func NewRateLimiter(config *config.RateLimitConfig) *RateLimiter {
 	if config.CleanupInterval == 0 {
 		config.CleanupInterval = 5 * time.Minute
 	}
@@ -98,7 +89,7 @@ func (rl *RateLimiter) periodicCleanup(maxSize int) {
 	}
 }
 
-func (rl *RateLimiter) Allow(identifier string, limit *RateLimit) bool {
+func (rl *RateLimiter) Allow(identifier string, limit *config.RateLimit) bool {
 	if !rl.config.Enabled {
 		return true
 	}
@@ -120,7 +111,7 @@ func (rl *RateLimiter) Allow(identifier string, limit *RateLimit) bool {
 	return limiter.Allow()
 }
 
-func (rl *RateLimiter) GetRateLimitStatus(identifier string, limit *RateLimit) (*RateLimitStatus, error) {
+func (rl *RateLimiter) GetRateLimitStatus(identifier string, limit *config.RateLimit) (*RateLimitStatus, error) {
 	if !rl.config.Enabled {
 		return &RateLimitStatus{
 			Limit:      limit.RequestsPerSecond,
@@ -284,24 +275,32 @@ func (rl *RateLimiter) getClientIP(r *http.Request) string {
 	return host
 }
 
-func (rl *RateLimiter) getRateLimit(identifier string) *RateLimit {
+func (rl *RateLimiter) getRateLimit(identifier string) *config.RateLimit {
 	// Check for API key specific limits
 	if strings.HasPrefix(identifier, "api_key:") {
 		key := strings.TrimPrefix(identifier, "api_key:")
 		if limit, exists := rl.config.ByAPIKey[key]; exists {
-			return limit
+			return &config.RateLimit{
+				RequestsPerSecond: limit.RequestsPerSecond,
+				BurstSize:         limit.BurstSize,
+				WindowSize:        limit.WindowSize,
+			}
 		}
 	}
 
 	// Check for IP specific limits
 	if strings.HasPrefix(identifier, "ip:") {
 		if rl.config.ByIP != nil {
-			return rl.config.ByIP
+			return &config.RateLimit{
+				RequestsPerSecond: rl.config.ByIP.RequestsPerSecond,
+				BurstSize:         rl.config.ByIP.BurstSize,
+				WindowSize:        rl.config.ByIP.WindowSize,
+			}
 		}
 	}
 
 	// Use global limits
-	return &RateLimit{
+	return &config.RateLimit{
 		RequestsPerSecond: rl.config.Global.RequestsPerSecond,
 		BurstSize:         rl.config.Global.BurstSize,
 		WindowSize:        rl.config.Global.WindowSize,

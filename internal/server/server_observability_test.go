@@ -8,15 +8,36 @@ import (
 	"testing"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
-	"github.com/leslieo2/go-spec-mock/internal/security"
 )
 
 func TestServer_ObservabilityEndpoints(t *testing.T) {
 	// Create server with test spec
-	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{
+		SpecFile: "../../examples/petstore.yaml",
+		Server: config.ServerConfig{
+			Host:            "localhost",
+			Port:            "8080",
+			ReadTimeout:     15 * time.Second,
+			WriteTimeout:    15 * time.Second,
+			IdleTimeout:     60 * time.Second,
+			ShutdownTimeout: 30 * time.Second,
+			MaxRequestSize:  10 * 1024 * 1024,
+		},
+		Security: config.DefaultSecurityConfig(),
+		Observability: config.ObservabilityConfig{
+			Logging: config.DefaultLoggingConfig(),
+			Metrics: config.MetricsConfig{
+				Enabled: true,
+				Port:    "9090",
+				Path:    "/metrics",
+			},
+			Tracing: config.DefaultTracingConfig(),
+		},
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -74,8 +95,17 @@ func TestServer_ObservabilityEndpoints(t *testing.T) {
 }
 
 func TestHealthHandler(t *testing.T) {
-	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{
+		SpecFile: "../../examples/petstore.yaml",
+		Server:   config.DefaultServerConfig(),
+		Security: config.DefaultSecurityConfig(),
+		Observability: config.ObservabilityConfig{
+			Logging: config.DefaultLoggingConfig(),
+			Metrics: config.DefaultMetricsConfig(),
+			Tracing: config.DefaultTracingConfig(),
+		},
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -121,8 +151,17 @@ func TestHealthHandler(t *testing.T) {
 }
 
 func TestReadinessHandler_Ready(t *testing.T) {
-	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{
+		SpecFile: "../../examples/petstore.yaml",
+		Server:   config.DefaultServerConfig(),
+		Security: config.DefaultSecurityConfig(),
+		Observability: config.ObservabilityConfig{
+			Logging: config.DefaultLoggingConfig(),
+			Metrics: config.DefaultMetricsConfig(),
+			Tracing: config.DefaultTracingConfig(),
+		},
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -149,8 +188,8 @@ func TestReadinessHandler_Ready(t *testing.T) {
 
 func TestReadinessHandler_NotReady(t *testing.T) {
 	// Create server with minimal setup to test not-ready state
-	logger, _ := observability.NewLogger(observability.DefaultLogConfig())
-	tracer, _ := observability.NewTracer(observability.DefaultTraceConfig())
+	logger, _ := observability.NewLogger(config.DefaultLoggingConfig())
+	tracer, _ := observability.NewTracer(config.DefaultTracingConfig())
 	server := &Server{
 		routes:    []parser.Route{},
 		parser:    nil,
@@ -180,8 +219,17 @@ func TestReadinessHandler_NotReady(t *testing.T) {
 }
 
 func TestMetricsHandler(t *testing.T) {
-	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{
+		SpecFile: "../../examples/petstore.yaml",
+		Server:   config.DefaultServerConfig(),
+		Security: config.DefaultSecurityConfig(),
+		Observability: config.ObservabilityConfig{
+			Logging: config.DefaultLoggingConfig(),
+			Metrics: config.DefaultMetricsConfig(),
+			Tracing: config.DefaultTracingConfig(),
+		},
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -208,8 +256,17 @@ func TestMetricsHandler(t *testing.T) {
 }
 
 func TestDocumentationHandler(t *testing.T) {
-	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{
+		SpecFile: "../../examples/petstore.yaml",
+		Server:   config.DefaultServerConfig(),
+		Security: config.DefaultSecurityConfig(),
+		Observability: config.ObservabilityConfig{
+			Logging: config.DefaultLoggingConfig(),
+			Metrics: config.DefaultMetricsConfig(),
+			Tracing: config.DefaultTracingConfig(),
+		},
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -269,8 +326,17 @@ func TestDocumentationHandler(t *testing.T) {
 }
 
 func TestServer_MetricsCollection(t *testing.T) {
-	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{
+		SpecFile: "../../examples/petstore.yaml",
+		Server:   config.DefaultServerConfig(),
+		Security: config.DefaultSecurityConfig(),
+		Observability: config.ObservabilityConfig{
+			Logging: config.DefaultLoggingConfig(),
+			Metrics: config.DefaultMetricsConfig(),
+			Tracing: config.DefaultTracingConfig(),
+		},
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -295,8 +361,17 @@ func TestServer_MetricsCollection(t *testing.T) {
 }
 
 func TestServer_ObservabilityIntegration(t *testing.T) {
-	specFile := "../../examples/petstore.yaml"
-	server, err := New(specFile, "localhost", "8080", security.DefaultSecurityConfig(), "9090", 15*time.Second, 15*time.Second, 60*time.Second, 30*time.Second, 10*1024*1024)
+	cfg := &config.Config{
+		SpecFile: "../../examples/petstore.yaml",
+		Server:   config.DefaultServerConfig(),
+		Security: config.DefaultSecurityConfig(),
+		Observability: config.ObservabilityConfig{
+			Logging: config.DefaultLoggingConfig(),
+			Metrics: config.DefaultMetricsConfig(),
+			Tracing: config.DefaultTracingConfig(),
+		},
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}

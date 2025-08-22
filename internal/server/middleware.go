@@ -15,12 +15,12 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	// Apply middleware chain in reverse order
 
 	// CORS middleware
-	if s.corsCfg != nil && s.corsCfg.Enabled {
+	if s.config.Security.CORS.Enabled {
 		handler = s.corsMiddleware(handler)
 	}
 
 	// Security headers middleware
-	if s.securityConfig != nil {
+	if s.config.Security.Headers.Enabled {
 		handler = s.securityHeadersMiddleware(handler)
 	}
 
@@ -50,7 +50,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 
 		// Check if origin is allowed
 		allowed := false
-		for _, allowedOrigin := range s.corsCfg.AllowedOrigins {
+		for _, allowedOrigin := range s.config.Security.CORS.AllowedOrigins {
 			if allowedOrigin == "*" || allowedOrigin == origin {
 				allowed = true
 				break
@@ -59,17 +59,17 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 
 		if allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			if len(s.corsCfg.AllowedMethods) > 0 {
-				w.Header().Set("Access-Control-Allow-Methods", strings.Join(s.corsCfg.AllowedMethods, ", "))
+			if len(s.config.Security.CORS.AllowedMethods) > 0 {
+				w.Header().Set("Access-Control-Allow-Methods", strings.Join(s.config.Security.CORS.AllowedMethods, ", "))
 			}
-			if len(s.corsCfg.AllowedHeaders) > 0 {
-				w.Header().Set("Access-Control-Allow-Headers", strings.Join(s.corsCfg.AllowedHeaders, ", "))
+			if len(s.config.Security.CORS.AllowedHeaders) > 0 {
+				w.Header().Set("Access-Control-Allow-Headers", strings.Join(s.config.Security.CORS.AllowedHeaders, ", "))
 			}
-			if s.corsCfg.AllowCredentials {
+			if s.config.Security.CORS.AllowCredentials {
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
-			if s.corsCfg.MaxAge > 0 {
-				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", s.corsCfg.MaxAge))
+			if s.config.Security.CORS.MaxAge > 0 {
+				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", s.config.Security.CORS.MaxAge))
 			}
 		}
 
@@ -86,7 +86,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 // SecurityHeadersMiddleware adds security headers to responses
 func (s *Server) securityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.securityConfig == nil || !s.securityConfig.Headers.Enabled {
+		if s.config == nil || !s.config.Security.Headers.Enabled {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -95,17 +95,17 @@ func (s *Server) securityHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
-		w.Header().Set("Strict-Transport-Security", fmt.Sprintf("max-age=%d; includeSubDomains", s.securityConfig.Headers.HSTSMaxAge))
+		w.Header().Set("Strict-Transport-Security", fmt.Sprintf("max-age=%d; includeSubDomains", s.config.Security.Headers.HSTSMaxAge))
 
-		if s.securityConfig.Headers.ContentSecurityPolicy != "" {
-			w.Header().Set("Content-Security-Policy", s.securityConfig.Headers.ContentSecurityPolicy)
+		if s.config.Security.Headers.ContentSecurityPolicy != "" {
+			w.Header().Set("Content-Security-Policy", s.config.Security.Headers.ContentSecurityPolicy)
 		}
 
 		// Allowed hosts check
-		if len(s.securityConfig.Headers.AllowedHosts) > 0 {
+		if len(s.config.Security.Headers.AllowedHosts) > 0 {
 			host := r.Host
 			allowed := false
-			for _, allowedHost := range s.securityConfig.Headers.AllowedHosts {
+			for _, allowedHost := range s.config.Security.Headers.AllowedHosts {
 				if host == allowedHost {
 					allowed = true
 					break
@@ -131,11 +131,11 @@ func (s *Server) securityHeadersMiddleware(next http.Handler) http.Handler {
 // RequestSizeLimitMiddleware limits the size of incoming requests
 func (s *Server) requestSizeLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.maxReqSize > 0 && r.ContentLength > s.maxReqSize {
+		if s.config.Server.MaxRequestSize > 0 && r.ContentLength > s.config.Server.MaxRequestSize {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
 			_ = json.NewEncoder(w).Encode(map[string]string{
-				"error": fmt.Sprintf("Request body too large, max size: %d bytes", s.maxReqSize),
+				"error": fmt.Sprintf("Request body too large, max size: %d bytes", s.config.Server.MaxRequestSize),
 			})
 			return
 		}

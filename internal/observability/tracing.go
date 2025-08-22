@@ -11,21 +11,15 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
+
+	"github.com/leslieo2/go-spec-mock/internal/config"
 )
 
 type Tracer struct {
 	tracer oteltrace.Tracer
 }
 
-type TraceConfig struct {
-	Enabled     bool   `json:"enabled" yaml:"enabled"`
-	Exporter    string `json:"exporter" yaml:"exporter"`
-	ServiceName string `json:"service_name" yaml:"service_name"`
-	Environment string `json:"environment" yaml:"environment"`
-	Version     string `json:"version" yaml:"version"`
-}
-
-func NewTracer(config TraceConfig) (*Tracer, error) {
+func NewTracer(config config.TracingConfig) (*Tracer, error) {
 	if !config.Enabled {
 		return &Tracer{tracer: otel.Tracer("noop")}, nil
 	}
@@ -63,14 +57,4 @@ func (t *Tracer) Shutdown(ctx context.Context) error {
 		return tp.Shutdown(ctx)
 	}
 	return nil
-}
-
-func DefaultTraceConfig() TraceConfig {
-	return TraceConfig{
-		Enabled:     false,
-		Exporter:    "stdout",
-		ServiceName: "go-spec-mock",
-		Environment: "production",
-		Version:     "1.0.0",
-	}
 }

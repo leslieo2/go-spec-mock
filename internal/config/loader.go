@@ -139,6 +139,9 @@ func loadFromEnv(config *Config) {
 
 // overrideWithCLI overrides configuration with CLI flag values
 func overrideWithCLI(config *Config, flags *CLIFlags) {
+	if flags == nil {
+		return
+	}
 	if flags.Host != nil && *flags.Host != "" {
 		config.Server.Host = *flags.Host
 	}

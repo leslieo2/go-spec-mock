@@ -19,7 +19,42 @@ type cachedResponse struct {
 
 // generateCacheKey creates a cache key from request parameters
 func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
-	return method + ":" + path + ":" + r.URL.Query().Get("__statusCode")
+	// Create a consistent cache key including all relevant request parameters
+	query := r.URL.Query()
+
+	// Build parameter string from all query parameters (sorted for consistency)
+	var params []string
+	for key, values := range query {
+		// Skip internal parameters that don't affect response content
+		if key == "__statusCode" || key == "_" {
+			continue
+		}
+		for _, value := range values {
+			params = append(params, key+"="+value)
+		}
+	}
+
+	// Sort parameters for consistent cache keys
+	for i := 0; i < len(params); i++ {
+		for j := i + 1; j < len(params); j++ {
+			if params[i] > params[j] {
+				params[i], params[j] = params[j], params[i]
+			}
+		}
+	}
+
+	// Always include status code as it's a primary cache key component
+	statusCode := query.Get("__statusCode")
+	if statusCode == "" {
+		statusCode = "200"
+	}
+
+	cacheKey := method + ":" + path + ":" + statusCode
+	if len(params) > 0 {
+		cacheKey += ":" + strings.Join(params, "&")
+	}
+
+	return cacheKey
 }
 
 // getCachedResponse retrieves a cached response if available

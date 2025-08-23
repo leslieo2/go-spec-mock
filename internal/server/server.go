@@ -161,19 +161,48 @@ func (s *Server) Start() error {
 	s.logger.Logger.Info("Shutting down server...")
 	s.metrics.SetHealthStatus(false)
 
-	// Graceful shutdown
+	// Graceful shutdown with parallel server shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.Server.ShutdownTimeout)
 	defer cancel()
 
-	// Shutdown metrics server first, then main server
+	var wg sync.WaitGroup
+	errChan := make(chan error, 2)
+
+	// Shutdown metrics server in parallel
 	if metricsServer != nil {
-		s.logger.Logger.Info("Shutting down metrics server...")
-		if err := metricsServer.Shutdown(ctx); err != nil {
-			s.logger.Logger.Error("Failed to shutdown metrics server", zap.Error(err))
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.logger.Logger.Info("Shutting down metrics server...")
+			if err := metricsServer.Shutdown(ctx); err != nil {
+				s.logger.Logger.Error("Failed to shutdown metrics server", zap.Error(err))
+				errChan <- fmt.Errorf("metrics server shutdown: %w", err)
+			}
+		}()
 	}
 
-	return s.server.Shutdown(ctx)
+	// Shutdown main server in parallel
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.logger.Logger.Info("Shutting down main server...")
+		if err := s.server.Shutdown(ctx); err != nil {
+			s.logger.Logger.Error("Failed to shutdown main server", zap.Error(err))
+			errChan <- fmt.Errorf("main server shutdown: %w", err)
+		}
+	}()
+
+	// Wait for both shutdowns to complete
+	wg.Wait()
+	close(errChan)
+
+	// Return the first error encountered, if any
+	for err := range errChan {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.Route) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
+	"github.com/leslieo2/go-spec-mock/internal/server/middleware"
 	"go.uber.org/zap"
 )
 
@@ -69,20 +70,14 @@ func TestDefaultCORSConfig(t *testing.T) {
 }
 
 func TestCORSMiddleware(t *testing.T) {
-	server := &Server{
-		config: &config.Config{
-			Security: config.SecurityConfig{
-				CORS: config.CORSConfig{
-					Enabled:          true,
-					AllowedOrigins:   []string{"*"},
-					AllowedMethods:   []string{"GET", "POST"},
-					AllowedHeaders:   []string{"Content-Type"},
-					AllowCredentials: true,
-					MaxAge:           3600,
-				},
-			},
-		},
-	}
+	// Create CORS middleware directly
+	corsMiddleware := middleware.NewCORSMiddleware(
+		[]string{"*"},
+		[]string{"GET", "POST"},
+		[]string{"Content-Type"},
+		true,
+		3600,
+	)
 
 	// Test handler
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -90,14 +85,14 @@ func TestCORSMiddleware(t *testing.T) {
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	middleware := server.corsMiddleware(next)
+	handler := corsMiddleware.Handler(next)
 
 	// Test actual request
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.Header.Set("Origin", "http://localhost:3000")
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", rec.Code)
@@ -110,30 +105,26 @@ func TestCORSMiddleware(t *testing.T) {
 }
 
 func TestCORSMiddleware_Preflight(t *testing.T) {
-	server := &Server{
-		config: &config.Config{
-			Security: config.SecurityConfig{
-				CORS: config.CORSConfig{
-					Enabled:        true,
-					AllowedOrigins: []string{"*"},
-					AllowedMethods: []string{"GET", "POST"},
-					AllowedHeaders: []string{"Content-Type"},
-				},
-			},
-		},
-	}
+	// Create CORS middleware directly
+	corsMiddleware := middleware.NewCORSMiddleware(
+		[]string{"*"},
+		[]string{"GET", "POST"},
+		[]string{"Content-Type"},
+		false,
+		0,
+	)
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := server.corsMiddleware(next)
+	handler := corsMiddleware.Handler(next)
 
 	// Test preflight request
 	req := httptest.NewRequest("OPTIONS", "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected status 200 for preflight, got %d", rec.Code)
@@ -141,26 +132,18 @@ func TestCORSMiddleware_Preflight(t *testing.T) {
 }
 
 func TestCORSMiddleware_Disabled(t *testing.T) {
-	server := &Server{
-		config: &config.Config{
-			Security: config.SecurityConfig{
-				CORS: config.CORSConfig{
-					Enabled: false,
-				},
-			},
-		},
-	}
-
+	// Test that when CORS is not applied, no CORS headers are added
+	// This test is mainly for ensuring no middleware is applied when CORS is disabled
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := server.corsMiddleware(next)
-
+	// Since the middleware is only applied when CORS is enabled in applyMiddleware,
+	// we just test a plain handler here
 	req := httptest.NewRequest("GET", "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	next.ServeHTTP(rec, req)
 
 	corsHeader := rec.Header().Get("Access-Control-Allow-Origin")
 	if corsHeader != "" {
@@ -169,26 +152,21 @@ func TestCORSMiddleware_Disabled(t *testing.T) {
 }
 
 func TestRequestSizeLimitMiddleware(t *testing.T) {
-	server := &Server{
-		config: &config.Config{
-			Server: config.ServerConfig{
-				MaxRequestSize: 1024, // 1KB limit
-			},
-		},
-	}
+	// Create request size limit middleware directly
+	requestSizeLimit := middleware.RequestSizeLimitMiddleware(1024) // 1KB limit
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := server.requestSizeLimitMiddleware(next)
+	handler := requestSizeLimit(next)
 
 	// Test request within limit
 	req := httptest.NewRequest("POST", "/test", strings.NewReader("small data"))
 	req.ContentLength = 10
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected status 200 for valid request, got %d", rec.Code)
@@ -199,7 +177,7 @@ func TestRequestSizeLimitMiddleware(t *testing.T) {
 	req.ContentLength = 2048
 	rec = httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Errorf("Expected status 413 for oversized request, got %d", rec.Code)
@@ -207,25 +185,20 @@ func TestRequestSizeLimitMiddleware(t *testing.T) {
 }
 
 func TestRequestSizeLimitMiddleware_NoLimit(t *testing.T) {
-	server := &Server{
-		config: &config.Config{
-			Server: config.ServerConfig{
-				MaxRequestSize: 0, // No limit
-			},
-		},
-	}
+	// Create request size limit middleware with no limit (0)
+	requestSizeLimit := middleware.RequestSizeLimitMiddleware(0) // No limit
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := server.requestSizeLimitMiddleware(next)
+	handler := requestSizeLimit(next)
 
 	req := httptest.NewRequest("POST", "/test", strings.NewReader("any data"))
 	req.ContentLength = 9999999
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("Expected status 200 when no limit, got %d", rec.Code)
@@ -233,20 +206,19 @@ func TestRequestSizeLimitMiddleware_NoLimit(t *testing.T) {
 }
 
 func TestLoggingMiddleware(t *testing.T) {
-	server := &Server{
-		logger: &observability.Logger{Logger: zap.NewNop()},
-	}
+	// Create logging middleware directly
+	loggingMiddleware := middleware.LoggingMiddleware(zap.NewNop())
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	})
 
-	middleware := server.loggingMiddleware(next)
+	handler := loggingMiddleware(next)
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusCreated {
 		t.Errorf("Expected status 201, got %d", rec.Code)

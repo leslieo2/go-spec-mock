@@ -67,5 +67,10 @@ observability:
   tracing:
     enabled: false
 
+# Hot Reload Configuration
+hot_reload:
+  enabled: true
+  debounce: "500ms"
+
 # OpenAPI Specification
 spec_file: "./examples/petstore.yaml"

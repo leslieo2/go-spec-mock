@@ -63,6 +63,8 @@ type CLIFlags struct {
 	RateLimitStrategy *string
 	RateLimitRPS      *int
 	GenerateKey       *string
+	HotReload         *bool
+	HotReloadDebounce *time.Duration
 }
 
 // loadFromFile loads configuration from a YAML or JSON file
@@ -135,6 +137,16 @@ func loadFromEnv(config *Config) {
 	if val := os.Getenv("GO_SPEC_MOCK_SPEC_FILE"); val != "" {
 		config.SpecFile = val
 	}
+	if val := os.Getenv("GO_SPEC_MOCK_HOT_RELOAD"); val != "" {
+		if enabled, err := strconv.ParseBool(val); err == nil {
+			config.HotReload.Enabled = enabled
+		}
+	}
+	if val := os.Getenv("GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE"); val != "" {
+		if duration, err := time.ParseDuration(val); err == nil {
+			config.HotReload.Debounce = duration
+		}
+	}
 }
 
 // overrideWithCLI overrides configuration with CLI flag values
@@ -189,6 +201,12 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 	if flags.SpecFile != nil && *flags.SpecFile != "" {
 		config.SpecFile = *flags.SpecFile
+	}
+	if flags.HotReload != nil {
+		config.HotReload.Enabled = *flags.HotReload
+	}
+	if flags.HotReloadDebounce != nil && *flags.HotReloadDebounce > 0 {
+		config.HotReload.Debounce = *flags.HotReloadDebounce
 	}
 }
 
@@ -246,5 +264,13 @@ func mergeConfig(base *Config, file *Config) {
 
 	if file.SpecFile != "" {
 		base.SpecFile = file.SpecFile
+	}
+
+	// Merge hot reload configuration
+	if file.HotReload.Enabled != base.HotReload.Enabled {
+		base.HotReload.Enabled = file.HotReload.Enabled
+	}
+	if file.HotReload.Debounce > 0 {
+		base.HotReload.Debounce = file.HotReload.Debounce
 	}
 }

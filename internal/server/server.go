@@ -312,3 +312,37 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 	)
 	mux.HandleFunc(muxPath, handler)
 }
+
+// Reload implements the hotreload.Reloadable interface
+func (s *Server) Reload(ctx context.Context) error {
+	s.logger.Logger.Info("Reloading server configuration")
+
+	// Parse the updated OpenAPI spec
+	newParser, err := parser.New(s.config.SpecFile)
+	if err != nil {
+		return fmt.Errorf("failed to parse updated OpenAPI spec: %w", err)
+	}
+
+	// Update routes by re-initializing the parser and routes
+	newRoutes := newParser.GetRoutes()
+	newRouteMap := make(map[string][]parser.Route)
+
+	for _, route := range newRoutes {
+		key := fmt.Sprintf("%s:%s", route.Method, route.Path)
+		newRouteMap[key] = append(newRouteMap[key], route)
+	}
+
+	// Update server state atomically
+	s.routes = newRoutes
+	s.routeMap = newRouteMap
+	s.parser = newParser
+
+	s.logger.Logger.Info("Server configuration reloaded successfully",
+		zap.Int("routes", len(newRoutes)))
+	return nil
+}
+
+// Name returns the name of this reloadable component
+func (s *Server) Name() string {
+	return "mock-server"
+}

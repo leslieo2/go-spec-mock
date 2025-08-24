@@ -3,6 +3,7 @@ module github.com/leslieo2/go-spec-mock
 go 1.24.5
 
 require (
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.23.0

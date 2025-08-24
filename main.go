@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
+	"github.com/leslieo2/go-spec-mock/internal/hotreload"
 	"github.com/leslieo2/go-spec-mock/internal/security"
 	"github.com/leslieo2/go-spec-mock/internal/server"
 )
@@ -36,6 +38,10 @@ func main() {
 	rateLimitRPS := flag.Int("rate-limit-rps", 100, "Global rate limit requests per second")
 	generateKey := flag.String("generate-key", "", "Generate a new API key with given name")
 
+	// Hot reload flags
+	hotReload := flag.Bool("hot-reload", true, "Enable hot reload for specification file")
+	hotReloadDebounce := flag.Duration("hot-reload-debounce", 500*time.Millisecond, "Debounce time for hot reload events")
+
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
 	}
@@ -56,6 +62,8 @@ func main() {
 		RateLimitStrategy: rateLimitStrategy,
 		RateLimitRPS:      rateLimitRPS,
 		GenerateKey:       generateKey,
+		HotReload:         hotReload,
+		HotReloadDebounce: hotReloadDebounce,
 	}
 
 	// Load configuration with precedence (CLI > Env > File > Defaults)
@@ -107,6 +115,35 @@ func main() {
 		log.Fatalf("Failed to create mock server: %v", err)
 	}
 
+	// Initialize hot reload if enabled
+	var hotReloadManager *hotreload.Manager
+	if cfg.HotReload.Enabled {
+		hotReloadManager, err = hotreload.NewManager()
+		if err != nil {
+			log.Fatalf("Failed to create hot reload manager: %v", err)
+		}
+
+		// Set debounce time from config
+		hotReloadManager.SetDebounceTime(cfg.HotReload.Debounce)
+
+		// Watch the spec file
+		if err := hotReloadManager.AddWatch(cfg.SpecFile); err != nil {
+			log.Fatalf("Failed to watch spec file: %v", err)
+		}
+
+		// Register the server as a reloadable component
+		if err := hotReloadManager.RegisterReloadable(mockServer); err != nil {
+			log.Fatalf("Failed to register server for hot reload: %v", err)
+		}
+
+		// Start hot reload manager
+		if err := hotReloadManager.Start(); err != nil {
+			log.Fatalf("Failed to start hot reload: %v", err)
+		}
+
+		log.Printf("Hot reload enabled for %s", cfg.SpecFile)
+	}
+
 	log.Printf("Starting mock server for %s on %s:%s", cfg.SpecFile, cfg.Server.Host, cfg.Server.Port)
 	if cfg.Security.Auth.Enabled {
 		log.Printf("API key authentication enabled")
@@ -119,6 +156,13 @@ func main() {
 
 	if err := mockServer.Start(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+
+	// Shutdown hot reload manager if enabled
+	if hotReloadManager != nil {
+		if err := hotReloadManager.Shutdown(context.Background()); err != nil {
+			log.Printf("Failed to shutdown hot reload manager: %v", err)
+		}
 	}
 }
 
@@ -144,10 +188,14 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  -rate-limit-strategy\tRate limiting strategy: ip, api_key, both (default: ip)\n")
 	fmt.Fprintf(os.Stderr, "  -rate-limit-rps\t\tGlobal rate limit requests per second (default: 100)\n")
 	fmt.Fprintf(os.Stderr, "  -generate-key\t\tGenerate a new API key with given name\n")
+	fmt.Fprintf(os.Stderr, "\nHot reload flags:\n")
+	fmt.Fprintf(os.Stderr, "  -hot-reload\t\tEnable hot reload for specification file (default: true)\n")
+	fmt.Fprintf(os.Stderr, "  -hot-reload-debounce\tDebounce time for hot reload events (default: 500ms)\n")
 	fmt.Fprintf(os.Stderr, "\nEnvironment variables:\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_HOST, GO_SPEC_MOCK_PORT, GO_SPEC_MOCK_METRICS_PORT\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_READ_TIMEOUT, GO_SPEC_MOCK_WRITE_TIMEOUT, GO_SPEC_MOCK_IDLE_TIMEOUT\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_MAX_REQUEST_SIZE, GO_SPEC_MOCK_SHUTDOWN_TIMEOUT, GO_SPEC_MOCK_SPEC_FILE\n")
+	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_HOT_RELOAD, GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE\n")
 	fmt.Fprintf(os.Stderr, "\nConfiguration file:\n")
 	fmt.Fprintf(os.Stderr, "  go-spec-mock.yaml (default configuration file)\n")
 	fmt.Fprintf(os.Stderr, "\nExample usage:\n")

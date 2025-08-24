@@ -21,6 +21,7 @@
 
 *   **🚀 Specification-First:** Instantly mock any API by providing an OpenAPI 3.0 (YAML/JSON) file.
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
+*   **🔥 Hot Reload:** Automatically reloads OpenAPI specifications and configuration files without server restart for rapid development.
 *   **🛡️ Security First:** Built-in support for API key authentication and rate limiting to simulate real-world security policies.
 *   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
 *   **🔧 Developer-Friendly:** Simple CLI, seamless integration with tools like [Insomnia](https://insomnia.rest/), and a comprehensive set of utility endpoints.
@@ -151,6 +152,13 @@ All settings can be configured via CLI flags or environment variables.
 | `-max-request-size` | `GO_SPEC_MOCK_MAX_REQUEST_SIZE` | Maximum request size in bytes. | `10485760` |
 | `-shutdown-timeout` | `GO_SPEC_MOCK_SHUTDOWN_TIMEOUT` | Graceful shutdown timeout. | `30s` |
 
+#### Hot Reload Configuration
+
+| Flag | Environment Variable | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-hot-reload` | `GO_SPEC_MOCK_HOT_RELOAD` | Enable automatic hot reloading of spec/config files. | `true` |
+| `-hot-reload-debounce` | `GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE` | Debounce duration for file changes. | `500ms` |
+
 #### Security Configuration
 
 | Flag | Environment Variable | Description | Default |
@@ -175,6 +183,19 @@ go-spec-mock -config ./config.yaml -spec-file ./examples/petstore.yaml
 *   `examples/config/go-spec-mock.yaml` - Complete configuration with all options.
 *   `examples/config/minimal.yaml` - Minimal required configuration.
 *   `examples/config/security-focused.yaml` - Security-first configuration.
+
+#### Hot Reload Configuration
+
+Enable automatic reloading of OpenAPI specifications without server restart:
+
+```yaml
+# Hot Reload Configuration
+hot_reload:
+  enabled: true
+  debounce: "500ms"
+```
+
+With hot reload enabled, simply save your OpenAPI spec file and the server will automatically reload the new specifications without requiring a restart.
 
 ### Security Features
 
@@ -339,7 +360,8 @@ This project uses a `Makefile` to streamline common development tasks.
 │   ├── parser/                   # OpenAPI specification parsing logic
 │   ├── server/                   # HTTP server and routing logic
 │   ├── security/                 # Authentication and rate limiting
-│   └── observability/            # Logging, metrics, and tracing
+│   ├── observability/            # Logging, metrics, and tracing
+│   └── hotreload/                # Hot reload functionality for specs
 ```
 
 ## 🛣️ Roadmap
@@ -386,6 +408,8 @@ The project is currently at **v1.0.0** and is stable for general use. The future
 - [ ] Official Docker images on Docker Hub
 - [ ] Example Helm charts for Kubernetes deployment
 
+#### 🔥 Developer Experience
+- [x] Hot reload for specifications and configuration
 </details>
 
 ## 🙏 Acknowledgments

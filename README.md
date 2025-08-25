@@ -416,8 +416,6 @@ This project uses a `Makefile` to streamline common development tasks.
 ├── Dockerfile                    # Multi-stage Docker build
 ├── CHANGELOG.md                  # Version history and features
 ├── LICENSE                       # Apache 2.0 license
-├── coverage.html                 # Test coverage report
-├── go-spec-mock-api.yaml         # Project's own OpenAPI specification
 ```
 
 ## 🛣️ Roadmap

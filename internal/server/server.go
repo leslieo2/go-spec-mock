@@ -28,6 +28,7 @@ type Server struct {
 	cache    *sync.Map
 	routes   []parser.Route
 	routeMap map[string][]parser.Route
+	mu       sync.RWMutex // Protects routes, routeMap, and parser
 
 	// Security
 	authManager *security.AuthManager
@@ -56,6 +57,9 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	metrics := observability.NewMetrics()
+	if err := metrics.Register(); err != nil {
+		return nil, fmt.Errorf("failed to register metrics: %w", err)
+	}
 	tracer, err := observability.NewTracer(cfg.Observability.Tracing)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
@@ -95,13 +99,21 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/metrics", s.metricsHandler)
 	mux.HandleFunc("/ready", s.readinessHandler)
 
-	// Register OpenAPI routes first
+	// Register OpenAPI routes first with proper synchronization
+	s.mu.RLock()
+	routeMapCopy := make(map[string][]parser.Route, len(s.routeMap))
 	for path, routes := range s.routeMap {
+		routeMapCopy[path] = routes
+	}
+	_, rootExists := s.routeMap["/"]
+	s.mu.RUnlock()
+
+	for path, routes := range routeMapCopy {
 		s.registerRoute(mux, path, routes)
 	}
 
 	// Add documentation endpoint only if no root route is defined in OpenAPI
-	if _, exists := s.routeMap["/"]; !exists {
+	if !rootExists {
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/" {
 				s.serveDocumentation(w, r)
@@ -128,7 +140,7 @@ func (s *Server) Start() error {
 	s.logger.Logger.Info("Starting server",
 		zap.String("host", s.config.Server.Host),
 		zap.String("port", s.config.Server.Port),
-		zap.Int("routes", len(s.routes)),
+		zap.Int("routes", len(routeMapCopy)),
 	)
 
 	s.metrics.SetHealthStatus(true)
@@ -338,10 +350,12 @@ func (s *Server) Reload(ctx context.Context) error {
 		newRouteMap[key] = append(newRouteMap[key], route)
 	}
 
-	// Update server state atomically
+	// Update server state atomically with proper synchronization
+	s.mu.Lock()
 	s.routes = newRoutes
 	s.routeMap = newRouteMap
 	s.parser = newParser
+	s.mu.Unlock()
 
 	s.logger.Logger.Info("Server configuration reloaded successfully",
 		zap.Int("routes", len(newRoutes)))

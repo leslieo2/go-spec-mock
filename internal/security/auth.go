@@ -106,12 +106,14 @@ func (am *AuthManager) ValidateAPIKey(providedKey string) (*APIKey, error) {
 	}
 
 	// Update last used timestamp in a separate goroutine to avoid lock contention
-	go func(k *APIKey) {
+	go func(key string) {
 		am.mu.Lock()
 		defer am.mu.Unlock()
-		now := time.Now()
-		k.LastUsed = &now
-	}(foundKey)
+		if apiKey, exists := am.keys[key]; exists {
+			now := time.Now()
+			apiKey.LastUsed = &now
+		}
+	}(foundKey.Key)
 
 	return foundKey, nil
 }

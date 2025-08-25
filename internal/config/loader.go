@@ -72,9 +72,13 @@ type CLIFlags struct {
 
 // loadFromFile loads configuration from a YAML or JSON file
 func loadFromFile(filePath string) (*Config, error) {
-	// Normalize path
+	// Normalize path to absolute for consistency
 	if !filepath.IsAbs(filePath) {
-		filePath = filepath.Clean(filePath)
+		absPath, err := filepath.Abs(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get absolute path for %s: %w", filePath, err)
+		}
+		filePath = absPath
 	}
 
 	data, err := os.ReadFile(filePath)

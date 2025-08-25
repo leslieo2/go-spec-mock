@@ -1,9 +1,11 @@
 package server
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/leslieo2/go-spec-mock/internal/parser"
@@ -34,13 +36,13 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 		}
 	}
 
-	// Sort parameters for consistent cache keys
-	for i := 0; i < len(params); i++ {
-		for j := i + 1; j < len(params); j++ {
-			if params[i] > params[j] {
-				params[i], params[j] = params[j], params[i]
-			}
-		}
+	// Sort parameters using efficient sorting for consistent cache keys
+	if len(params) > 1 {
+		// Use Go's built-in sort for better performance and reliability
+		// This ensures consistent ordering regardless of parameter arrival order
+		stringsSlice := sort.StringSlice(params)
+		sort.Sort(stringsSlice)
+		params = stringsSlice
 	}
 
 	// Always include status code as it's a primary cache key component
@@ -49,9 +51,40 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 		statusCode = "200"
 	}
 
+	// Include additional request context to prevent collisions
+	// - Authentication context (if available)
+	// - Accept header for content negotiation
+	// - Content-Type for request body format
+	var contextParts []string
+	
+	// Add authentication context if available
+	if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+		// Use a hash of the auth header to avoid storing sensitive data in cache keys
+		h := sha256.New()
+		h.Write([]byte(authHeader))
+		contextParts = append(contextParts, "auth:"+fmt.Sprintf("%x", h.Sum(nil))[:16])
+	}
+	
+	// Add content negotiation headers
+	if accept := r.Header.Get("Accept"); accept != "" && accept != "*/*" {
+		contextParts = append(contextParts, "accept:"+accept)
+	}
+	
+	if contentType := r.Header.Get("Content-Type"); contentType != "" {
+		contextParts = append(contextParts, "content-type:"+contentType)
+	}
+
+	// Build cache key with all components
 	cacheKey := method + ":" + path + ":" + statusCode
+	
+	// Add sorted query parameters
 	if len(params) > 0 {
 		cacheKey += ":" + strings.Join(params, "&")
+	}
+	
+	// Add request context
+	if len(contextParts) > 0 {
+		cacheKey += ":" + strings.Join(contextParts, ";")
 	}
 
 	return cacheKey

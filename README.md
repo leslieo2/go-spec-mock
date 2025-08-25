@@ -31,164 +31,141 @@
 
 ## 📖 Table of Contents
 
-- [🚀 Getting Started](#-getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-    - [Quick Usage](#quick-usage)
-- [📖 Usage Guide](#-usage-guide)
-    - [Insomnia Integration](#insomnia-integration)
-    - [Dynamic Status Code Selection](#dynamic-status-code-selection)
+- [🎯 Use Cases](#-use-cases)
+- [🚀 Quick Start](#-quick-start)
+- [📖 Core Usage](#-core-usage)
 - [⚙️ Configuration](#️-configuration)
-    - [Configuration Precedence](#configuration-precedence)
-    - [CLI Flags & Environment Variables](#cli-flags--environment-variables)
-    - [Configuration File](#configuration-file)
-    - [Security Features](#security-features)
 - [🐳 Docker Usage](#-docker-usage)
-- [👨‍💻 Development & Contribution](#-development--contribution)
-    - [Setup](#setup)
-    - [Development Commands](#development-commands)
-    - [Project Structure](#project-structure)
+- [👨‍💻 Development](#-development)
 - [🛣️ Roadmap](#️-roadmap)
 - [🙏 Acknowledgments](#-acknowledgments)
 - [📄 License](#-license)
 
-## 🚀 Getting Started
+## 🎯 Use Cases
+
+Go-Spec-Mock is designed for **API development and testing workflows** where you need realistic mock servers without writing backend code.
+
+### Frontend Development
+- **Build UIs against accurate API contracts** before backend exists
+- **Test error states and edge cases** with status code overrides (`__statusCode=404`)
+- **Work with realistic data shapes** from OpenAPI examples
+- **Rapid prototyping** with hot-reload enabled specs
+
+### Backend Development
+- **Validate API designs** with stakeholders using live mocks
+- **Test integration points** between services
+- **Create consistent test environments** across development teams
+- **Contract-first development** - spec drives both mock and implementation
+
+### Testing & QA
+- **Automated testing** with predictable responses
+- **Load testing** with cached responses
+- **Contract testing** between services
+- **Regression testing** with versioned specs
+
+### CI/CD Pipelines
+- **Spin up mock servers** for integration tests
+- **Parallel development** when services are unavailable
+- **Environment-specific mock configurations**
+- **Deployment validation** using production-like data
+
+### Typical Development Workflow
+1. **Design Phase**: Write OpenAPI spec → Start mock server → Share with team
+2. **Development**: Frontend consumes mock → Backend implements against same spec
+3. **Testing**: Automated tests use mocks → Validate against real implementation
+4. **Deployment**: Replace mocks with real services gradually
+
+## 🚀 Quick Start
+
+**30 seconds to your first mock API:**
+
+```bash
+# Install
+go install github.com/leslieo2/go-spec-mock@latest
+
+# Start mocking with the Petstore example
+go-spec-mock -spec-file ./examples/petstore.yaml
+
+# Test it
+curl http://localhost:8080/pets
+```
+
+**That's it!** Your mock API is running with realistic responses from the OpenAPI spec.
 
 ### Prerequisites
+- [Go](https://go.dev/doc/install) version 1.24 or later
 
-- [Go](https://go.dev/doc/install) version 1.24 or later.
+## 📖 Core Usage
 
-### Installation
+### Essential Patterns
 
-Install the `go-spec-mock` CLI with a single command:
-
+**Start with your OpenAPI spec:**
 ```bash
-go install github.com/leslieo2/go-spec-mock@latest
+go-spec-mock ./your-api.yaml
 ```
 
-### Quick Usage
-
-1.  **Get an OpenAPI Spec:** Create your own, or use the provided examples.
-
-2.  **Start the Mock Server:** Point `go-spec-mock` to your specification file.
-    ```bash
-    # Start mocking using the example Petstore spec
-    go-spec-mock -spec-file ./examples/petstore.yaml
-    
-    # With security features enabled
-    go-spec-mock -spec-file ./examples/petstore.yaml -auth-enabled -rate-limit-enabled
-    
-    # With configuration file
-    go-spec-mock -config ./examples/config/security-focused.yaml -spec-file ./examples/petstore.yaml
-    ```
-
-3.  You'll see structured output indicating the server is running:
-    ```json
-    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Starting server","host":"localhost","port":"8080"}
-    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Registered route","method":"GET","path":"/"}
-    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Registered route","method":"GET","path":"/health"}
-    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Registered route","method":"GET","path":"/pets"}
-    ```
-
-4.  **Test Your Endpoints:** In another terminal, use any HTTP client like `curl` to interact with your mock API.
-    ```bash
-    # Get a list of all pets
-    curl http://localhost:8080/pets
-  
-    # Get a specific pet by its ID
-    curl http://localhost:8080/pets/123
-    
-    # Check health status
-    curl http://localhost:8080/health
-    
-    # View Prometheus metrics
-    curl http://localhost:9090/metrics
-    ```
-
-## 📖 Usage Guide
-
-### Insomnia Integration
-
-`go-spec-mock` is perfect for a design-first workflow with Insomnia.
-
-1.  **Design API in Insomnia:** Create your endpoints, schemas, and examples in Insomnia's "Design" tab.
-2.  **Export Spec:** Click the collection dropdown, then select **Export** -> **OpenAPI 3.0** (as YAML or JSON). Save it as `api-spec.yaml`.
-3.  **Start Mocking:**
-    ```bash
-    go-spec-mock ./api-spec.yaml
-    ```
-4.  **Test:** Point your frontend application or Insomnia's "Debug" tab to `http://localhost:8080` to test against the live mock server.
-
-### Dynamic Status Code Selection
-
-Test different response scenarios by overriding the status code with the `__statusCode` query parameter. The server will look for a matching response example in your spec.
-
+**Test different scenarios:**
 ```bash
-# Get the default 200 OK response
-curl http://localhost:8080/pets/1
+# Default response
+curl http://localhost:8080/users
 
-# Force a 404 Not Found response
-curl "http://localhost:8080/pets/1?__statusCode=404"
-
-# Force a 400 Bad Request response
-curl "http://localhost:8080/pets?__statusCode=400"
+# Test error cases  
+curl "http://localhost:8080/users?__statusCode=404"
+curl "http://localhost:8080/users?__statusCode=500"
 ```
+
+**Design-first workflow with Insomnia:**
+1. Design API in Insomnia → Export as OpenAPI 3.0
+2. `go-spec-mock ./api-spec.yaml`
+3. Test against `http://localhost:8080`
 
 ## ⚙️ Configuration
 
-### Configuration Precedence
+### Quick Reference
 
-Go-Spec-Mock supports flexible configuration with the following precedence:
+**Essential flags:**
+```bash
+go-spec-mock -spec-file ./api.yaml     # Start with spec
+go-spec-mock -config ./config.yaml     # Use config file
+go-spec-mock -hot-reload=false         # Disable hot reload
+```
 
-1.  **CLI flags** (highest priority)
-2.  **Environment variables**
-3.  **Configuration file values**
-4.  **Default values** (lowest priority)
+**Environment variables:**
+```bash
+GO_SPEC_MOCK_SPEC_FILE=./api.yaml
+GO_SPEC_MOCK_PORT=8080
+GO_SPEC_MOCK_AUTH_ENABLED=true
+```
 
-### CLI Flags & Environment Variables
+### Common Configurations
 
-All settings can be configured via CLI flags or environment variables.
+**Basic mock server:**
+```yaml
+server:
+  host: localhost
+  port: 8080
+```
 
-#### Server & General Configuration
+**With security:**
+```yaml
+security:
+  auth:
+    enabled: true
+    keys:
+      - key: "your-key"
+        name: "app"
+  rate_limit:
+    enabled: true
+    rps: 100
+```
 
-| Flag | Environment Variable | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `-spec-file` | `GO_SPEC_MOCK_SPEC_FILE` | Path to OpenAPI specification file. | `Required` |
-| `-config` | `GO_SPEC_MOCK_CONFIG` | Path to configuration file (YAML/JSON). | `""` |
-| `-host` | `GO_SPEC_MOCK_HOST` | The host to bind the server to. | `localhost` |
-| `-port` | `GO_SPEC_MOCK_PORT` | The port to run the server on. | `8080` |
-| `-metrics-port` | `GO_SPEC_MOCK_METRICS_PORT` | The port for the metrics server. | `9090` |
-| `-read-timeout` | `GO_SPEC_MOCK_READ_TIMEOUT` | HTTP server read timeout. | `15s` |
-| `-write-timeout` | `GO_SPEC_MOCK_WRITE_TIMEOUT` | HTTP server write timeout. | `15s` |
-| `-idle-timeout` | `GO_SPEC_MOCK_IDLE_TIMEOUT` | HTTP server idle timeout. | `60s` |
-| `-max-request-size` | `GO_SPEC_MOCK_MAX_REQUEST_SIZE` | Maximum request size in bytes. | `10485760` |
-| `-shutdown-timeout` | `GO_SPEC_MOCK_SHUTDOWN_TIMEOUT` | Graceful shutdown timeout. | `30s` |
-
-#### Hot Reload Configuration
-
-| Flag | Environment Variable | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `-hot-reload` | `GO_SPEC_MOCK_HOT_RELOAD` | Enable automatic hot reloading of spec/config files. | `true` |
-| `-hot-reload-debounce` | `GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE` | Debounce duration for file changes. | `500ms` |
-
-#### Proxy Configuration
-
-| Flag | Environment Variable | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `-proxy-enabled` | `GO_SPEC_MOCK_PROXY_ENABLED` | Enable proxy mode for undefined endpoints. | `false` |
-| `-proxy-target` | `GO_SPEC_MOCK_PROXY_TARGET` | Target server URL for proxy mode. | `""` |
-| `-proxy-timeout` | `GO_SPEC_MOCK_PROXY_TIMEOUT` | Timeout for proxy requests. | `30s` |
-
-#### Security Configuration
-
-| Flag | Environment Variable | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `-auth-enabled` | `GO_SPEC_MOCK_AUTH_ENABLED` | Enable API key authentication. | `false` |
-| `-auth-config` | `GO_SPEC_MOCK_AUTH_CONFIG` | Path to a security configuration file. | `""` |
-| `-rate-limit-enabled` | `GO_SPEC_MOCK_RATE_LIMIT_ENABLED` | Enable rate limiting. | `false` |
-| `-rate-limit-strategy` | `GO_SPEC_MOCK_RATE_LIMIT_STRATEGY` | Strategy: `ip`, `api_key`, `both`. | `ip` |
-| `-rate-limit-rps` | `GO_SPEC_MOCK_RATE_LIMIT_RPS` | Global rate limit in requests per second. | `100` |
-| `-generate-key <name>` | `N/A` | Generate a new API key and exit. | `""` |
+**With proxy fallback:**
+```yaml
+proxy:
+  enabled: true
+  target: "https://api.production.com"
+  timeout: "15s"
+```
 
 ### Configuration File
 
@@ -473,7 +450,7 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 </details>
 
 <details>
-<summary><strong>🚀 Phase 3: <Adv></Adv>anced Enterprise Features (Planned)</strong></summary>
+<summary><strong>🚀 Phase 3: <Adv></Adv>Enhanced Enterprise Features (Planned)</strong></summary>
 
 #### 🔥 **Core Enterprise Priorities**
 - [ ] **Smart Proxy Routing** - Spec-based intelligent matching for proxy requests

@@ -153,7 +153,12 @@ func (c *Coordinator) coordinateReloads() {
 				debounceTimer.Reset(c.debounceTime)
 			}
 
-		case <-debounceTimer.C:
+		case <-func() <-chan time.Time {
+			if debounceTimer != nil {
+				return debounceTimer.C
+			}
+			return nil
+		}():
 			if len(events) > 0 {
 				c.triggerReload(events)
 				events = events[:0] // Clear events slice

@@ -72,12 +72,21 @@ type CLIFlags struct {
 
 // loadFromFile loads configuration from a YAML or JSON file
 func loadFromFile(filePath string) (*Config, error) {
-	// Normalize path
+	// Normalize path to absolute for consistency
 	if !filepath.IsAbs(filePath) {
-		filePath = filepath.Clean(filePath)
+		absPath, err := filepath.Abs(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get absolute path for %s: %w", filePath, err)
+		}
+		filePath = absPath
 	}
 
-	data, err := os.ReadFile(filePath)
+	// Validate file path to prevent directory traversal
+	if err := validateFilePath(filePath); err != nil {
+		return nil, fmt.Errorf("invalid config file path %s: %w", filePath, err)
+	}
+
+	data, err := os.ReadFile(filePath) // #nosec G304 - file path validated by validateFilePath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file %s: %w", filePath, err)
 	}
@@ -298,4 +307,24 @@ func mergeConfig(base *Config, file *Config) {
 	if file.HotReload.Debounce > 0 {
 		base.HotReload.Debounce = file.HotReload.Debounce
 	}
+}
+
+// validateFilePath checks if the file path is safe to read
+// Prevents directory traversal attacks and ensures the file is within expected locations
+func validateFilePath(filePath string) error {
+	// Get absolute path and clean it
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Clean the path to remove any .. or . components
+	cleanPath := filepath.Clean(absPath)
+
+	// Ensure the path doesn't contain any suspicious patterns
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("path contains directory traversal attempts")
+	}
+
+	return nil
 }

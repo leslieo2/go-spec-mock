@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -394,5 +396,181 @@ func TestNewProxy(t *testing.T) {
 				t.Errorf("NewProxy() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestGenerateCacheKey(t *testing.T) {
+	server := &Server{}
+
+	tests := []struct {
+		name     string
+		method   string
+		path     string
+		request  *http.Request
+		expected string
+	}{
+		{
+			name:   "basic request without parameters",
+			method: "GET",
+			path:   "/users",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/users", nil)
+				return req
+			}(),
+			expected: "GET:/users:200",
+		},
+		{
+			name:   "request with query parameters",
+			method: "GET",
+			path:   "/users",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/users?name=john&age=30", nil)
+				return req
+			}(),
+			expected: "GET:/users:200:age=30&name=john",
+		},
+		{
+			name:   "request with status code override",
+			method: "GET",
+			path:   "/users",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/users?__statusCode=404", nil)
+				return req
+			}(),
+			expected: "GET:/users:404",
+		},
+		{
+			name:   "request with multiple parameter values",
+			method: "GET",
+			path:   "/search",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/search?tags=go&tags=api&q=test", nil)
+				return req
+			}(),
+			expected: "GET:/search:200:q=test&tags=api&tags=go",
+		},
+		{
+			name:   "request with authorization header",
+			method: "GET",
+			path:   "/secure",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/secure", nil)
+				req.Header.Set("Authorization", "Bearer token123")
+				return req
+			}(),
+			expected: func() string {
+				// The auth hash will be consistent for the same token
+				h := sha256.New()
+				h.Write([]byte("Bearer token123"))
+				authHash := fmt.Sprintf("%x", h.Sum(nil))[:16]
+				return "GET:/secure:200:auth:" + authHash
+			}(),
+		},
+		{
+			name:   "request with accept header",
+			method: "GET",
+			path:   "/data",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/data", nil)
+				req.Header.Set("Accept", "application/json")
+				return req
+			}(),
+			expected: "GET:/data:200:accept:application/json",
+		},
+		{
+			name:   "request with content type header",
+			method: "POST",
+			path:   "/data",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("POST", "/data", nil)
+				req.Header.Set("Content-Type", "application/json")
+				return req
+			}(),
+			expected: "POST:/data:200:content-type:application/json",
+		},
+		{
+			name:   "request with all context components",
+			method: "GET",
+			path:   "/api",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api?param=value", nil)
+				req.Header.Set("Authorization", "Bearer token")
+				req.Header.Set("Accept", "application/json")
+				req.Header.Set("Content-Type", "application/json")
+				return req
+			}(),
+			expected: func() string {
+				h := sha256.New()
+				h.Write([]byte("Bearer token"))
+				authHash := fmt.Sprintf("%x", h.Sum(nil))[:16]
+				return "GET:/api:200:param=value:auth:" + authHash + ";accept:application/json;content-type:application/json"
+			}(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key := server.generateCacheKey(tt.method, tt.path, tt.request)
+			if key != tt.expected {
+				t.Errorf("generateCacheKey() = %v, want %v", key, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGenerateCacheKey_CollisionPrevention(t *testing.T) {
+	server := &Server{}
+
+	// Test that different parameter orders generate different cache keys
+	req1, _ := http.NewRequest("GET", "/test?a=1&b=2", nil)
+	req2, _ := http.NewRequest("GET", "/test?b=2&a=1", nil)
+
+	key1 := server.generateCacheKey("GET", "/test", req1)
+	key2 := server.generateCacheKey("GET", "/test", req2)
+
+	if key1 != key2 {
+		t.Error("Different parameter orders should generate identical cache keys after sorting")
+	}
+
+	// Test that different authorization tokens generate different cache keys
+	req3, _ := http.NewRequest("GET", "/secure", nil)
+	req3.Header.Set("Authorization", "Bearer token1")
+
+	req4, _ := http.NewRequest("GET", "/secure", nil)
+	req4.Header.Set("Authorization", "Bearer token2")
+
+	key3 := server.generateCacheKey("GET", "/secure", req3)
+	key4 := server.generateCacheKey("GET", "/secure", req4)
+
+	if key3 == key4 {
+		t.Error("Different authorization tokens should generate different cache keys")
+	}
+
+	// Test that different accept headers generate different cache keys
+	req5, _ := http.NewRequest("GET", "/data", nil)
+	req5.Header.Set("Accept", "application/json")
+
+	req6, _ := http.NewRequest("GET", "/data", nil)
+	req6.Header.Set("Accept", "application/xml")
+
+	key5 := server.generateCacheKey("GET", "/data", req5)
+	key6 := server.generateCacheKey("GET", "/data", req6)
+
+	if key5 == key6 {
+		t.Error("Different accept headers should generate different cache keys")
+	}
+}
+
+func TestGenerateCacheKey_InternalParameters(t *testing.T) {
+	server := &Server{}
+
+	// Test that internal parameters are excluded from cache key
+	req, _ := http.NewRequest("GET", "/test?__statusCode=404&_=timestamp&realParam=value", nil)
+	key := server.generateCacheKey("GET", "/test", req)
+
+	// Should only include realParam, not __statusCode or _
+	expected := "GET:/test:404:realParam=value"
+	if key != expected {
+		t.Errorf("generateCacheKey() = %v, want %v", key, expected)
 	}
 }

@@ -16,6 +16,9 @@ type Metrics struct {
 	ResponseSize      *prometheus.HistogramVec
 	ActiveConnections prometheus.Gauge
 	HealthStatus      prometheus.Gauge
+
+	registry *prometheus.Registry
+	handler  http.Handler
 }
 
 func NewMetrics() *Metrics {
@@ -84,5 +87,37 @@ func (m *Metrics) SetHealthStatus(healthy bool) {
 }
 
 func (m *Metrics) Handler() http.Handler {
+	if m.handler != nil {
+		return m.handler
+	}
 	return promhttp.Handler()
+}
+
+func (m *Metrics) Register() error {
+	m.registry = prometheus.NewRegistry()
+
+	// Register all metrics with the custom registry
+	if err := m.registry.Register(m.RequestCount); err != nil {
+		return err
+	}
+	if err := m.registry.Register(m.RequestDuration); err != nil {
+		return err
+	}
+	if err := m.registry.Register(m.RequestSize); err != nil {
+		return err
+	}
+	if err := m.registry.Register(m.ResponseSize); err != nil {
+		return err
+	}
+	if err := m.registry.Register(m.ActiveConnections); err != nil {
+		return err
+	}
+	if err := m.registry.Register(m.HealthStatus); err != nil {
+		return err
+	}
+
+	// Create the handler using our custom registry
+	m.handler = promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
+
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
@@ -294,5 +295,104 @@ func TestNew(t *testing.T) {
 	_, err = New(cfg)
 	if err == nil {
 		t.Error("Expected error for empty spec file")
+	}
+}
+
+func TestProxyConfiguration(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  config.ProxyConfig
+		wantErr bool
+	}{
+		{
+			name: "valid proxy configuration",
+			config: config.ProxyConfig{
+				Enabled: true,
+				Target:  "http://localhost:8081",
+				Timeout: 30 * time.Second,
+			},
+			wantErr: false,
+		},
+		{
+			name: "proxy enabled but no target",
+			config: config.ProxyConfig{
+				Enabled: true,
+				Target:  "",
+				Timeout: 30 * time.Second,
+			},
+			wantErr: true,
+		},
+		{
+			name: "proxy disabled with invalid target",
+			config: config.ProxyConfig{
+				Enabled: false,
+				Target:  "",
+				Timeout: 0,
+			},
+			wantErr: false, // Should not error when disabled
+		},
+		{
+			name: "invalid timeout",
+			config: config.ProxyConfig{
+				Enabled: true,
+				Target:  "http://localhost:8081",
+				Timeout: 0,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ProxyConfig.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewProxy(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  config.ProxyConfig
+		wantErr bool
+	}{
+		{
+			name: "valid proxy",
+			config: config.ProxyConfig{
+				Enabled: true,
+				Target:  "http://localhost:8081",
+				Timeout: 30 * time.Second,
+			},
+			wantErr: false,
+		},
+		{
+			name: "proxy not enabled",
+			config: config.ProxyConfig{
+				Enabled: false,
+				Target:  "http://localhost:8081",
+				Timeout: 30 * time.Second,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid target URL",
+			config: config.ProxyConfig{
+				Enabled: true,
+				Target:  "://invalid-url",
+				Timeout: 30 * time.Second,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := middleware.NewProxy(tt.config)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewProxy() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

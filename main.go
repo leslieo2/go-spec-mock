@@ -42,6 +42,11 @@ func main() {
 	hotReload := flag.Bool("hot-reload", true, "Enable hot reload for specification file")
 	hotReloadDebounce := flag.Duration("hot-reload-debounce", 500*time.Millisecond, "Debounce time for hot reload events")
 
+	// Proxy flags
+	proxyEnabled := flag.Bool("proxy-enabled", false, "Enable proxy mode for undefined endpoints")
+	proxyTarget := flag.String("proxy-target", "", "Target server URL for proxy mode")
+	proxyTimeout := flag.Duration("proxy-timeout", 30*time.Second, "Timeout for proxy requests")
+
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
 	}
@@ -64,6 +69,9 @@ func main() {
 		GenerateKey:       generateKey,
 		HotReload:         hotReload,
 		HotReloadDebounce: hotReloadDebounce,
+		ProxyEnabled:      proxyEnabled,
+		ProxyTarget:       proxyTarget,
+		ProxyTimeout:      proxyTimeout,
 	}
 
 	// Load configuration with precedence (CLI > Env > File > Defaults)

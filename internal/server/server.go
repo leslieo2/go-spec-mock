@@ -16,6 +16,7 @@ import (
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
 	"github.com/leslieo2/go-spec-mock/internal/security"
+	"github.com/leslieo2/go-spec-mock/internal/server/middleware"
 	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 )
@@ -37,6 +38,9 @@ type Server struct {
 	metrics   *observability.Metrics
 	tracer    *observability.Tracer
 	startTime time.Time
+
+	// Proxy
+	proxy *middleware.Proxy
 }
 
 func New(cfg *config.Config) (*Server, error) {
@@ -101,6 +105,8 @@ func (s *Server) Start() error {
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/" {
 				s.serveDocumentation(w, r)
+			} else if s.config.Proxy.Enabled {
+				s.handleProxyRequest(w, r)
 			} else {
 				http.NotFound(w, r)
 			}
@@ -340,6 +346,23 @@ func (s *Server) Reload(ctx context.Context) error {
 	s.logger.Logger.Info("Server configuration reloaded successfully",
 		zap.Int("routes", len(newRoutes)))
 	return nil
+}
+
+// handleProxyRequest handles requests by forwarding them to the configured proxy target
+func (s *Server) handleProxyRequest(w http.ResponseWriter, r *http.Request) {
+	if s.proxy == nil {
+		// Lazy initialization of proxy
+		proxy, err := middleware.NewProxy(s.config.Proxy)
+		if err != nil {
+			s.logger.Logger.Error("Failed to initialize proxy", zap.Error(err))
+			http.Error(w, "Proxy configuration error", http.StatusInternalServerError)
+			return
+		}
+		s.proxy = proxy
+	}
+
+	// Forward the request to the target server
+	s.proxy.ServeHTTP(w, r)
 }
 
 // Name returns the name of this reloadable component

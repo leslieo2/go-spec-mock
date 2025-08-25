@@ -23,6 +23,7 @@
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
 *   **🔥 Hot Reload:** Automatically reloads OpenAPI specifications and configuration files without server restart for rapid development.
 *   **🛡️ Security First:** Built-in support for API key authentication and rate limiting to simulate real-world security policies.
+*   **🔄 Smart Proxy:** Automatically forwards requests for undefined endpoints to a real backend server, enabling hybrid mocking.
 *   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
 *   **🔧 Developer-Friendly:** Simple CLI, seamless integration with tools like [Insomnia](https://insomnia.rest/), and a comprehensive set of utility endpoints.
 *   **🏢 Enterprise-Ready:** Built with a clean, testable, and performant Go architecture.
@@ -159,6 +160,14 @@ All settings can be configured via CLI flags or environment variables.
 | `-hot-reload` | `GO_SPEC_MOCK_HOT_RELOAD` | Enable automatic hot reloading of spec/config files. | `true` |
 | `-hot-reload-debounce` | `GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE` | Debounce duration for file changes. | `500ms` |
 
+#### Proxy Configuration
+
+| Flag | Environment Variable | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-proxy-enabled` | `GO_SPEC_MOCK_PROXY_ENABLED` | Enable proxy mode for undefined endpoints. | `false` |
+| `-proxy-target` | `GO_SPEC_MOCK_PROXY_TARGET` | Target server URL for proxy mode. | `""` |
+| `-proxy-timeout` | `GO_SPEC_MOCK_PROXY_TIMEOUT` | Timeout for proxy requests. | `30s` |
+
 #### Security Configuration
 
 | Flag | Environment Variable | Description | Default |
@@ -196,6 +205,24 @@ hot_reload:
 ```
 
 With hot reload enabled, simply save your OpenAPI spec file and the server will automatically reload the new specifications without requiring a restart.
+
+#### 🔄 Proxying Undefined Endpoints
+
+The proxy feature allows `go-spec-mock` to act as a pass-through for any requests that are not defined in your OpenAPI specification. This is useful when you want to mock a few endpoints of a larger, existing API without needing to define the entire API surface.
+
+When enabled, if a request comes in for a path that is not in the spec file (e.g., `/api/v1/existing-endpoint`), it will be forwarded to the configured target server.
+
+```yaml
+# Proxy configuration
+proxy:
+  enabled: true
+  target: "https://api.production.com" # The real backend API
+  timeout: "15s"
+```
+
+With this configuration, you can make requests to `http://localhost:8080`:
+-   Requests to paths defined in your `spec.yaml` (e.g., `/pets`) will be mocked by `go-spec-mock`.
+-   Requests to any other path (e.g., `/users`, `/orders`) will be proxied to `https://api.production.com`.
 
 ### Security Features
 

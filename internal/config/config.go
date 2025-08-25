@@ -11,6 +11,7 @@ type Config struct {
 	Observability ObservabilityConfig `json:"observability" yaml:"observability"`
 	SpecFile      string              `json:"spec_file" yaml:"spec_file"`
 	HotReload     HotReloadConfig     `json:"hot_reload" yaml:"hot_reload"`
+	Proxy         ProxyConfig         `json:"proxy" yaml:"proxy"`
 }
 
 // DefaultConfig returns the default configuration
@@ -21,6 +22,7 @@ func DefaultConfig() *Config {
 		Observability: DefaultObservabilityConfig(),
 		SpecFile:      "",
 		HotReload:     DefaultHotReloadConfig(),
+		Proxy:         DefaultProxyConfig(),
 	}
 }
 
@@ -37,6 +39,9 @@ func (c *Config) Validate() error {
 	}
 	if err := c.HotReload.Validate(); err != nil {
 		return fmt.Errorf("hot reload config validation failed: %w", err)
+	}
+	if err := c.Proxy.Validate(); err != nil {
+		return fmt.Errorf("proxy config validation failed: %w", err)
 	}
 	return nil
 }

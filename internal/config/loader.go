@@ -65,6 +65,9 @@ type CLIFlags struct {
 	GenerateKey       *string
 	HotReload         *bool
 	HotReloadDebounce *time.Duration
+	ProxyEnabled      *bool
+	ProxyTarget       *string
+	ProxyTimeout      *time.Duration
 }
 
 // loadFromFile loads configuration from a YAML or JSON file
@@ -147,6 +150,19 @@ func loadFromEnv(config *Config) {
 			config.HotReload.Debounce = duration
 		}
 	}
+	if val := os.Getenv("GO_SPEC_MOCK_PROXY_ENABLED"); val != "" {
+		if enabled, err := strconv.ParseBool(val); err == nil {
+			config.Proxy.Enabled = enabled
+		}
+	}
+	if val := os.Getenv("GO_SPEC_MOCK_PROXY_TARGET"); val != "" {
+		config.Proxy.Target = val
+	}
+	if val := os.Getenv("GO_SPEC_MOCK_PROXY_TIMEOUT"); val != "" {
+		if duration, err := time.ParseDuration(val); err == nil {
+			config.Proxy.Timeout = duration
+		}
+	}
 }
 
 // overrideWithCLI overrides configuration with CLI flag values
@@ -207,6 +223,15 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 	if flags.HotReloadDebounce != nil && *flags.HotReloadDebounce > 0 {
 		config.HotReload.Debounce = *flags.HotReloadDebounce
+	}
+	if flags.ProxyEnabled != nil {
+		config.Proxy.Enabled = *flags.ProxyEnabled
+	}
+	if flags.ProxyTarget != nil && *flags.ProxyTarget != "" {
+		config.Proxy.Target = *flags.ProxyTarget
+	}
+	if flags.ProxyTimeout != nil && *flags.ProxyTimeout > 0 {
+		config.Proxy.Timeout = *flags.ProxyTimeout
 	}
 }
 

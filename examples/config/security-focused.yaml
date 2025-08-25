@@ -69,3 +69,14 @@ observability:
     enabled: true
 
 spec_file: "./examples/petstore.yaml"
+
+# Proxy is disabled for security reasons
+proxy:
+  enabled: false
+  target: ""
+  timeout: "30s"
+
+# Hot reload is disabled for production-like environments
+hot_reload:
+  enabled: false
+  debounce: "500ms"

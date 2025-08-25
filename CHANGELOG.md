@@ -5,6 +5,55 @@ All notable changes to the Go-Spec-Mock project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2025-08-25
+
+### 🐛 Fixed
+- **Hot Reload Stability**: Fixed panic in coordinator timer handling during hot reload operations.
+- **Cache Key Generation**: Improved cache key generation to prevent collisions and ensure consistent response caching.
+- **Graceful Shutdown**: Enhanced server shutdown process for better resource cleanup.
+
+## [1.5.0] - 2025-08-25
+
+### ✨ Added
+- **Proxy Mode**: Mock-first, proxy-fallback strategy for undefined endpoints
+  - Automatically forwards requests to target servers when no mock route matches
+  - Configurable via CLI flags: `-proxy-enabled`, `-proxy-target`, `-proxy-timeout`
+  - Environment variables: `GO_SPEC_MOCK_PROXY_ENABLED`, `GO_SPEC_MOCK_PROXY_TARGET`, `GO_SPEC_MOCK_PROXY_TIMEOUT`
+- **Enhanced Error Handling**: Better error messages and status codes for proxy failures
+
+## [1.4.0] - 2025-08-24
+
+### ✨ Added
+- **Hot Reload System**: Zero-downtime configuration and specification updates
+  - File watching for both OpenAPI specs and configuration files
+  - Configurable debounce timing to prevent excessive reloads
+  - Atomic server reload without dropping requests
+  - CLI flags: `-hot-reload`, `-hot-reload-debounce`
+  - Environment variables: `GO_SPEC_MOCK_HOT_RELOAD`, `GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE`
+
+### 🔧 Changed
+- **Middleware Refactoring**: Modularized middleware system for better maintainability
+- **Server Architecture**: Improved internal server structure for hot reload support
+
+## [1.3.0] - 2025-08-22
+
+### ✨ Added
+- **Unified Configuration System**: Complete configuration management overhaul
+  - Support for YAML and JSON configuration files
+  - CLI flags override config files override environment variables override defaults
+  - New configuration file templates and examples
+  - All server settings now configurable via CLI, env vars, or config files
+- **Enhanced Configuration Templates**: Added comprehensive YAML configuration examples
+- **License Change**: Updated from MIT to Apache 2.0 for better enterprise compatibility
+
+### 🔧 Changed
+- **Configuration Architecture**: Centralized configuration management for consistency
+- **OpenAPI Validation**: Improved validation script and petstore example
+- **Documentation**: Enhanced security documentation and configuration guides
+
+### ✅ Added
+- **Comprehensive Unit Tests**: Added extensive test coverage for all new features
+
 ## [1.2.0] - 2025-08-15
 
 ### ✨ Added

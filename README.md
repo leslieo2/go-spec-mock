@@ -22,11 +22,12 @@
 *   **🚀 Specification-First:** Instantly mock any API by providing an OpenAPI 3.0 (YAML/JSON) file.
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
 *   **🔥 Hot Reload:** Automatically reloads OpenAPI specifications and configuration files without server restart for rapid development.
-*   **🛡️ Security First:** Built-in support for API key authentication and rate limiting to simulate real-world security policies.
-*   **🔄 Smart Proxy:** Automatically forwards requests for undefined endpoints to a real backend server, enabling hybrid mocking.
+*   **🛡️ Enterprise Security:** Comprehensive security suite with API key authentication, rate limiting, CORS, security headers, and role-based access control.
+*   **🔄 Smart Proxy:** Automatically forwards requests for undefined endpoints to a real backend server, enabling hybrid mocking with configurable timeouts.
+*   **📊 Full Observability:** Built-in Prometheus metrics, structured JSON logging, OpenTelemetry tracing, and health/readiness endpoints.
 *   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
-*   **🔧 Developer-Friendly:** Simple CLI, seamless integration with tools like [Insomnia](https://insomnia.rest/), and a comprehensive set of utility endpoints.
-*   **🏢 Enterprise-Ready:** Built with a clean, testable, and performant Go architecture.
+*   **🔧 Developer-Friendly:** Simple CLI with comprehensive flags, seamless integration with tools like [Insomnia](https://insomnia.rest/), and extensive development tooling.
+*   **🏢 Production-Ready:** Enterprise-grade architecture with comprehensive testing, Docker support, and configuration management.
 
 ## 📖 Table of Contents
 
@@ -55,7 +56,7 @@
 
 ### Prerequisites
 
-- [Go](https://go.dev/doc/install) version 1.21 or later.
+- [Go](https://go.dev/doc/install) version 1.24 or later.
 
 ### Installation
 
@@ -67,22 +68,26 @@ go install github.com/leslieo2/go-spec-mock@latest
 
 ### Quick Usage
 
-1.  **Get an OpenAPI Spec:** Create your own, or download one like the [Swagger Petstore](https://petstore3.swagger.io/api/v3/openapi.json) spec.
+1.  **Get an OpenAPI Spec:** Create your own, or use the provided examples.
 
 2.  **Start the Mock Server:** Point `go-spec-mock` to your specification file.
     ```bash
     # Start mocking using the example Petstore spec
-    go-spec-mock ./examples/petstore.yaml
+    go-spec-mock -spec-file ./examples/petstore.yaml
+    
+    # With security features enabled
+    go-spec-mock -spec-file ./examples/petstore.yaml -auth-enabled -rate-limit-enabled
+    
+    # With configuration file
+    go-spec-mock -config ./examples/config/security-focused.yaml -spec-file ./examples/petstore.yaml
     ```
 
-3.  You'll see output indicating the server is running and which routes are available:
-    ```
-    2023/10/27 10:00:00 Starting server on http://127.0.0.1:8080
-    2023/10/27 10:00:00 ----------------------------------------
-    2023/10/27 10:00:00 Registered Route: GET /
-    2023/10/27 10:00:00 Registered Route: GET /health
-    2023/10/27 10:00:00 Registered Route: GET /pets
-    ...
+3.  You'll see structured output indicating the server is running:
+    ```json
+    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Starting server","host":"localhost","port":"8080"}
+    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Registered route","method":"GET","path":"/"}
+    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Registered route","method":"GET","path":"/health"}
+    {"level":"info","ts":"2025-08-25T10:00:00.000Z","msg":"Registered route","method":"GET","path":"/pets"}
     ```
 
 4.  **Test Your Endpoints:** In another terminal, use any HTTP client like `curl` to interact with your mock API.
@@ -92,6 +97,12 @@ go install github.com/leslieo2/go-spec-mock@latest
   
     # Get a specific pet by its ID
     curl http://localhost:8080/pets/123
+    
+    # Check health status
+    curl http://localhost:8080/health
+    
+    # View Prometheus metrics
+    curl http://localhost:9090/metrics
     ```
 
 ## 📖 Usage Guide
@@ -362,14 +373,24 @@ This project uses a `Makefile` to streamline common development tasks.
 | `make build` | Build the `go-spec-mock` binary for your OS. |
 | `make run-example` | Run the server with the example `petstore.yaml` spec. |
 | `make run-example-secure` | Run with security features enabled. |
+| `make run-example-secure-config` | Run with security-focused configuration. |
+| `make run-example-minimal` | Run with minimal configuration. |
 | `make generate-key` | Generate a new API key interactively. |
-| `make test` | Run all unit tests. |
+| `make test` | Run all tests with coverage report. |
+| `make test-quick` | Run tests without coverage. |
 | `make fmt` | Format the Go source code. |
 | `make lint` | Run `golangci-lint` to check for code quality issues. |
+| `make vet` | Run `go vet` for static analysis. |
 | `make security` | Run security scan with `gosec`. |
-| `make ci` | Run the full CI pipeline (format, lint, test). |
+| `make ci` | Run the full CI pipeline (format, lint, test, build). |
 | `make build-all` | Cross-compile binaries for Linux, macOS, and Windows. |
+| `make build-version` | Build with version information. |
 | `make curl-test` | Run automated `curl` tests against the example server. |
+| `make curl-interactive` | Interactive curl testing session. |
+| `make docker` | Build Docker image. |
+| `make docker-run` | Run with petstore example in container. |
+| `make dev` | Start development server. |
+| `make watch` | Watch for file changes and rebuild. |
 
 ### Project Structure
 
@@ -381,19 +402,27 @@ This project uses a `Makefile` to streamline common development tasks.
 ├── main.go                       # CLI entry point
 ├── examples/
 │   ├── petstore.yaml             # Sample OpenAPI spec
+│   ├── uspto.yml                 # USPTO API specification example
 │   └── config/                   # Configuration examples
 ├── internal/
-│   ├── config/                   # Configuration management
+│   ├── config/                   # Configuration management (YAML/JSON)
 │   ├── parser/                   # OpenAPI specification parsing logic
 │   ├── server/                   # HTTP server and routing logic
+│   │   └── middleware/           # HTTP middleware chain (CORS, security, logging, proxy)
 │   ├── security/                 # Authentication and rate limiting
-│   ├── observability/            # Logging, metrics, and tracing
-│   └── hotreload/                # Hot reload functionality for specs
+│   ├── observability/            # Logging, metrics, tracing, and health checks
+│   ├── hotreload/                # Hot reload functionality for specs and config
+│   ├── proxy/                    # Proxy functionality for undefined endpoints
+├── Dockerfile                    # Multi-stage Docker build
+├── CHANGELOG.md                  # Version history and features
+├── LICENSE                       # Apache 2.0 license
+├── coverage.html                 # Test coverage report
+├── go-spec-mock-api.yaml         # Project's own OpenAPI specification
 ```
 
 ## 🛣️ Roadmap
 
-The project is currently at **v1.0.0** and is stable for general use. The future roadmap is focused on adding enterprise-grade features for security, observability, and configuration.
+The project is currently at **v1.5.1** and is production-ready with enterprise-grade security, observability, and configuration features. All core functionality is complete and battle-tested.
 
 <details>
 <summary><strong>✅ Phase 1: Core Features (Complete)</strong></summary>
@@ -408,11 +437,15 @@ The project is currently at **v1.0.0** and is stable for general use. The future
 </details>
 
 <details>
-<summary><strong>📋 Phase 2: Enterprise Enhancements (Planned)</strong></summary>
+<summary><strong>✅ Phase 2: Enterprise Enhancements (Complete)</strong></summary>
 
 #### 🔒 Security & Robustness
 - [x] Request size limiting
 - [x] Configurable log levels (DEBUG, INFO, WARN, ERROR)
+- [x] Comprehensive security configuration (YAML/JSON)
+- [x] API key authentication with role-based access
+- [x] Rate limiting by IP, API key, or both
+- [x] CORS configuration with security headers
 - [ ] Sensitive data masking in logs
 
 #### 📊 Observability
@@ -424,19 +457,42 @@ The project is currently at **v1.0.0** and is stable for general use. The future
 
 #### 🛡️ Advanced Configuration
 - [x] CORS (Cross-Origin Resource Sharing) configuration
-- [x] Rate limiting
-- [x] API key authentication
+- [x] Rate limiting with granular controls
 - [x] Configuration via CLI flags and environment variables
 - [x] Customizable server timeouts and ports
 - [ ] HTTPS/TLS support
 - [x] Configuration file support (YAML/JSON)
 
 #### 📦 Deployment
+- [x] Docker support with multi-stage builds
 - [ ] Official Docker images on Docker Hub
 - [ ] Example Helm charts for Kubernetes deployment
 
 #### 🔥 Developer Experience
 - [x] Hot reload for specifications and configuration
+- [x] Interactive API key generation
+- [x] Comprehensive CLI flags and environment variables
+</details>
+
+<details>
+<summary><strong>🚀 Phase 3: <Adv></Adv>anced Enterprise Features (Planned)</strong></summary>
+
+#### 🔥 **Core Enterprise Priorities**
+- [ ] **Smart Proxy Routing** - Spec-based intelligent matching for proxy requests
+- [ ] **JWT/OAuth 2.0 Integration** - Modern enterprise security standards
+- [ ] **OpenTelemetry Distributed Tracing** - Production debugging and monitoring
+- [ ] **WebSocket Protocol Mocking** - Real-time API support
+
+#### ⚡ **Enhanced Proxy & Security**
+- [ ] **Response Transformation** - Format conversion for proxied requests
+- [ ] **Stateful Mocking** - Complex business scenario testing
+- [ ] **RBAC & Multi-tenancy** - Team collaboration and access control
+
+#### 📈 **Production Observability**
+- [ ] **Custom Business Metrics** - Tailored analytics for enterprise needs
+- [ ] **Performance Profiling** - Real-time performance insights
+- [ ] **Enhanced Health Monitoring** - Comprehensive service status
+
 </details>
 
 ## 🙏 Acknowledgments

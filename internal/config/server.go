@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 )
@@ -65,6 +66,11 @@ func validatePort(portStr, fieldName string) error {
 
 	if port < 1 || port > 65535 {
 		return fmt.Errorf("%s must be between 1 and 65535", fieldName)
+	}
+
+	// Warn about privileged ports (1-1023) that require elevated privileges
+	if port < 1024 && port != 80 && port != 443 {
+		log.Printf("WARNING: %s %d is a privileged port (1-1023) and may require elevated privileges (sudo/root) to bind", fieldName, port)
 	}
 
 	return nil

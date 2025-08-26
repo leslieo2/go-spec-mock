@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `README.md` to include HTTPS/TLS in the Key Features list and added a comprehensive section on how to configure and use it.
 - Updated the project roadmap to reflect the completion of TLS support.
 
+## [1.5.2] - 2025-08-25
+
+### 🐛 Fixed
+- **Race Conditions**: Addressed critical race conditions to improve server reliability and stability.
+- **Hot Reload Stability**: Prevented panic in coordinator timer handling during hot reload operations.
+- **Legacy Code Removal**: Cleaned up legacy validation script and server API specification files.
+
+### 📚 Documentation
+- **Use Cases**: Added comprehensive use cases section to README.md.
+- **Changelog Updates**: Enhanced project documentation and changelog completeness.
+
 ## [1.5.1] - 2025-08-25
 
 ### 🐛 Fixed

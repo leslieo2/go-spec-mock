@@ -3,7 +3,7 @@ package server
 import (
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -604,7 +604,7 @@ func TestServer_Start_TLS(t *testing.T) {
 	}
 
 	// Check the response body
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		t.Fatalf("Failed to read response body: %v", err)
 	}

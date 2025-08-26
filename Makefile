@@ -66,6 +66,13 @@ run-example-minimal: build
 	@echo "Starting mock server with minimal configuration..."
 	$(BIN_DIR)/$(BINARY) -config ./examples/config/minimal.yaml -spec-file ./examples/petstore.yaml
 
+# Run with TLS enabled (requires cert.pem and key.pem to exist)
+run-example-tls: build
+	@echo "Starting mock server with TLS enabled..."
+	@echo "Note: This requires cert.pem and key.pem to exist in the root directory."
+	@echo "You can generate them with: openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes"
+	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -tls-enabled -tls-cert-file cert.pem -tls-key-file key.pem
+
 # Generate a new API key
 generate-key:
 	@echo "Generating a new API key..."

@@ -138,6 +138,32 @@ GO_SPEC_MOCK_PORT=8080
 GO_SPEC_MOCK_AUTH_ENABLED=true
 ```
 
+### 🔧 Configuration Priority
+
+Configuration is applied in the following order (highest → lowest priority):
+
+1. **CLI Flags** (explicit or default, e.g., `-port 8443` or the default value for `-port`) - Highest priority
+2. **Environment Variables** (`GO_SPEC_MOCK_PORT=8443`)
+3. **Configuration File Values** (`port: "8443"` in config.yaml)
+4. **Default Configuration** - Built-in defaults (lowest priority)
+
+**Important Notes:**
+- CLI flags (including defaults) override all other configuration sources
+- Configuration files override CLI flag default values
+- For production use, prefer configuration files over CLI flags
+
+**Examples:**
+```bash
+# ✅ Config file overrides CLI defaults
+# go-spec-mock -config config.yaml  # Uses port from config file
+
+# ✅ Explicit CLI flag overrides everything
+# go-spec-mock -config config.yaml -port 8443  # Uses port 8443
+
+# ✅ CLI default values are used as fallback
+# go-spec-mock -spec-file api.yaml  # Uses port 8080 (CLI default)
+```
+
 ### Common Configurations
 
 **Basic mock server:**

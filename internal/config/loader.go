@@ -17,7 +17,8 @@ import (
 // 1. CLI flags (override everything)
 // 2. Environment variables
 // 3. Configuration file values
-// 4. Default values
+// 4. CLI flag default values
+// 5. Default configuration values (lowest priority)
 func LoadConfig(configFile string, cliFlags *CLIFlags) (*Config, error) {
 	// Start with default configuration
 	config := DefaultConfig()
@@ -34,7 +35,7 @@ func LoadConfig(configFile string, cliFlags *CLIFlags) (*Config, error) {
 	// Load from environment variables
 	loadFromEnv(config)
 
-	// Override with CLI flags
+	// Override with CLI flags (including defaults)
 	if cliFlags != nil {
 		overrideWithCLI(config, cliFlags)
 	}
@@ -190,6 +191,7 @@ func loadFromEnv(config *Config) {
 }
 
 // overrideWithCLI overrides configuration with CLI flag values
+// CLI flags (including defaults) override all other configuration sources
 func overrideWithCLI(config *Config, flags *CLIFlags) {
 	if flags == nil {
 		return

@@ -5,6 +5,23 @@ All notable changes to the Go-Spec-Mock project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-08-26
+
+### ✨ Added
+- **HTTPS/TLS Support**: The server can now be configured to run in HTTPS mode, providing secure mocking for clients that require it.
+  - New top-level `tls` configuration block in `config.yaml`.
+  - New CLI flags: `-tls-enabled`, `-tls-cert-file`, `-tls-key-file`.
+  - New environment variables: `GO_SPEC_MOCK_TLS_ENABLED`, `GO_SPEC_MOCK_TLS_CERT_FILE`, `GO_SPEC_MOCK_TLS_KEY_FILE`.
+- **TLS Configuration Tests**: Added unit tests to validate the new TLS configuration options.
+- **TLS Server Integration Test**: Added an integration test to verify that the server runs correctly in HTTPS mode.
+
+### 🔧 Changed
+- The server now operates in an exclusive mode (either HTTP or HTTPS) on its main port, providing clear and predictable behavior.
+
+### 📚 Documentation
+- Updated `README.md` to include HTTPS/TLS in the Key Features list and added a comprehensive section on how to configure and use it.
+- Updated the project roadmap to reflect the completion of TLS support.
+
 ## [1.5.1] - 2025-08-25
 
 ### 🐛 Fixed

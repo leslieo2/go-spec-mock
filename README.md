@@ -22,6 +22,7 @@
 *   **🚀 Specification-First:** Instantly mock any API by providing an OpenAPI 3.0 (YAML/JSON) file.
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
 *   **🔥 Hot Reload:** Automatically reloads OpenAPI specifications and configuration files without server restart for rapid development.
+*   **🔒 Secure Mocking:** Full HTTPS/TLS support for testing secure clients and mimicking production environments.
 *   **🛡️ Enterprise Security:** Comprehensive security suite with API key authentication, rate limiting, CORS, security headers, and role-based access control.
 *   **🔄 Smart Proxy:** Automatically forwards requests for undefined endpoints to a real backend server, enabling hybrid mocking with configurable timeouts.
 *   **📊 Full Observability:** Built-in Prometheus metrics, structured JSON logging, OpenTelemetry tracing, and health/readiness endpoints.
@@ -284,6 +285,32 @@ security:
     allowed_hosts: ["localhost", "yourdomain.com"]
 ```
 
+#### HTTPS/TLS Support
+
+Enable HTTPS to serve your mock API over a secure connection. This is essential for testing clients that require HTTPS or for more closely mirroring a production environment.
+
+**To enable TLS, you need a certificate and a private key file.** For local development, you can generate a self-signed certificate using `openssl`:
+```bash
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
+```
+
+Then, configure the server using a configuration file:
+
+**Example `config.yaml`:**
+```yaml
+tls:
+  enabled: true
+  cert_file: "cert.pem"  # Path to your TLS certificate file
+  key_file: "key.pem"     # Path to your TLS private key file
+```
+
+You can also enable TLS and specify file paths via CLI flags:
+```bash
+go-spec-mock -spec-file ./api.yaml -tls-enabled -tls-cert-file cert.pem -tls-key-file key.pem
+```
+
+When enabled, the server will run on HTTPS only. Any HTTP requests to the same port will fail.
+
 ### Observability Endpoints
 
 The server provides built-in observability endpoints:
@@ -435,7 +462,7 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 - [x] Rate limiting with granular controls
 - [x] Configuration via CLI flags and environment variables
 - [x] Customizable server timeouts and ports
-- [ ] HTTPS/TLS support
+- [x] HTTPS/TLS support
 - [x] Configuration file support (YAML/JSON)
 
 #### 📦 Deployment

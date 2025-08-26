@@ -16,6 +16,9 @@ const (
 	EnvProxyEnabled      = "GO_SPEC_MOCK_PROXY_ENABLED"
 	EnvProxyTarget       = "GO_SPEC_MOCK_PROXY_TARGET"
 	EnvProxyTimeout      = "GO_SPEC_MOCK_PROXY_TIMEOUT"
+	EnvTLSEnabled        = "GO_SPEC_MOCK_TLS_ENABLED"
+	EnvTLSCertFile       = "GO_SPEC_MOCK_TLS_CERT_FILE"
+	EnvTLSKeyFile        = "GO_SPEC_MOCK_TLS_KEY_FILE"
 )
 
 // HTTP method constants

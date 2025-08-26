@@ -81,3 +81,12 @@ proxy:
 
 # OpenAPI Specification
 spec_file: "./examples/petstore.yaml"
+
+# TLS Configuration
+# Enables HTTPS for the mock server.
+# To generate a self-signed certificate for local testing:
+# openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
+tls:
+  enabled: false
+  cert_file: "cert.pem"  # Path to your TLS certificate file
+  key_file: "key.pem"     # Path to your TLS private key file

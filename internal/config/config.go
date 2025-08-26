@@ -12,6 +12,7 @@ type Config struct {
 	SpecFile      string              `json:"spec_file" yaml:"spec_file"`
 	HotReload     HotReloadConfig     `json:"hot_reload" yaml:"hot_reload"`
 	Proxy         ProxyConfig         `json:"proxy" yaml:"proxy"`
+	TLS           TLSConfig           `json:"tls" yaml:"tls"`
 }
 
 // DefaultConfig returns the default configuration
@@ -23,6 +24,7 @@ func DefaultConfig() *Config {
 		SpecFile:      "",
 		HotReload:     DefaultHotReloadConfig(),
 		Proxy:         DefaultProxyConfig(),
+		TLS:           DefaultTLSConfig(),
 	}
 }
 
@@ -42,6 +44,9 @@ func (c *Config) Validate() error {
 	}
 	if err := c.Proxy.Validate(); err != nil {
 		return fmt.Errorf("proxy config validation failed: %w", err)
+	}
+	if err := c.TLS.Validate(); err != nil {
+		return fmt.Errorf("tls config validation failed: %w", err)
 	}
 	return nil
 }

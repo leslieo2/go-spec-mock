@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/sha256"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -572,5 +573,44 @@ func TestGenerateCacheKey_InternalParameters(t *testing.T) {
 	expected := "GET:/test:404:realParam=value"
 	if key != expected {
 		t.Errorf("generateCacheKey() = %v, want %v", key, expected)
+	}
+}
+
+func TestServer_Start_TLS(t *testing.T) {
+	// Create a handler for the test server
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "Hello, TLS!")
+	})
+
+	// Create a new TLS test server
+	ts := httptest.NewTLSServer(handler)
+	defer ts.Close()
+
+	// Get the client from the test server
+	// This client is configured to trust the server's self-signed certificate
+	client := ts.Client()
+
+	// Make a request to the test server
+	res, err := client.Get(ts.URL)
+	if err != nil {
+		t.Fatalf("Failed to make request to TLS server: %v", err)
+	}
+	defer res.Body.Close()
+
+	// Check the status code
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, res.StatusCode)
+	}
+
+	// Check the response body
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+
+	expectedBody := "Hello, TLS!\n"
+	if string(body) != expectedBody {
+		t.Errorf("Expected body '%s', got '%s'", expectedBody, string(body))
 	}
 }

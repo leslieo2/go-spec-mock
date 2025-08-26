@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 )
 
@@ -36,6 +37,7 @@ func TestConfig_Validate(t *testing.T) {
 				Security:      DefaultSecurityConfig(),
 				Observability: DefaultObservabilityConfig(),
 				SpecFile:      "test.yaml",
+				TLS:           DefaultTLSConfig(),
 			},
 			wantErr: false,
 		},
@@ -48,6 +50,7 @@ func TestConfig_Validate(t *testing.T) {
 				Security:      DefaultSecurityConfig(),
 				Observability: DefaultObservabilityConfig(),
 				SpecFile:      "test.yaml",
+				TLS:           DefaultTLSConfig(),
 			},
 			wantErr: true,
 		},
@@ -65,6 +68,7 @@ func TestConfig_Validate(t *testing.T) {
 				},
 				Observability: DefaultObservabilityConfig(),
 				SpecFile:      "test.yaml",
+				TLS:           DefaultTLSConfig(),
 			},
 			wantErr: true,
 		},
@@ -80,6 +84,7 @@ func TestConfig_Validate(t *testing.T) {
 					},
 				},
 				SpecFile: "test.yaml",
+				TLS:      DefaultTLSConfig(),
 			},
 			wantErr: true,
 		},
@@ -90,6 +95,80 @@ func TestConfig_Validate(t *testing.T) {
 			err := tt.config.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_Validate_TLS(t *testing.T) {
+	// Helper to create a temporary file for testing
+	createTempFile := func(t *testing.T) *os.File {
+		t.Helper()
+		tmpFile, err := os.CreateTemp(t.TempDir(), "test-file-*.pem")
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
+		}
+		return tmpFile
+	}
+
+	tmpCert := createTempFile(t)
+	tmpKey := createTempFile(t)
+
+	tests := []struct {
+		name    string
+		config  *Config
+		wantErr bool
+	}{
+		{
+			name:    "TLS Disabled",
+			config:  DefaultConfig(),
+			wantErr: false,
+		},
+		{
+			name: "TLS Enabled - No Cert File",
+			config: &Config{
+				TLS: TLSConfig{Enabled: true, KeyFile: tmpKey.Name()},
+			},
+			wantErr: true,
+		},
+		{
+			name: "TLS Enabled - No Key File",
+			config: &Config{
+				TLS: TLSConfig{Enabled: true, CertFile: tmpCert.Name()},
+			},
+			wantErr: true,
+		},
+		{
+			name: "TLS Enabled - Cert File Not Found",
+			config: &Config{
+				TLS: TLSConfig{Enabled: true, CertFile: "non-existent-file.pem", KeyFile: tmpKey.Name()},
+			},
+			wantErr: true,
+		},
+		{
+			name: "TLS Enabled - Key File Not Found",
+			config: &Config{
+				TLS: TLSConfig{Enabled: true, CertFile: tmpCert.Name(), KeyFile: "non-existent-file.pem"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "TLS Enabled - Valid",
+			config: &Config{
+				TLS: TLSConfig{Enabled: true, CertFile: tmpCert.Name(), KeyFile: tmpKey.Name()},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// We need a base valid config for other checks to pass
+			baseConfig := DefaultConfig()
+			baseConfig.TLS = tt.config.TLS
+
+			if err := baseConfig.Validate(); (err != nil) != tt.wantErr {
+				t.Errorf("Config.Validate() for TLS error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

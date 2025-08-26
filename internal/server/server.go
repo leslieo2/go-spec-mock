@@ -167,7 +167,21 @@ func (s *Server) Start() error {
 	}
 
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		var err error
+		if s.config.TLS.Enabled {
+			s.logger.Logger.Info("Starting server with HTTPS/TLS",
+				zap.String("host", s.config.Server.Host),
+				zap.String("port", s.config.Server.Port),
+			)
+			err = s.server.ListenAndServeTLS(s.config.TLS.CertFile, s.config.TLS.KeyFile)
+		} else {
+			s.logger.Logger.Info("Starting server with HTTP",
+				zap.String("host", s.config.Server.Host),
+				zap.String("port", s.config.Server.Port),
+			)
+			err = s.server.ListenAndServe()
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.logger.Logger.Fatal("Server failed to start", zap.Error(err))
 		}
 	}()

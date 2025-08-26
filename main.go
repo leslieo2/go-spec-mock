@@ -48,6 +48,11 @@ func main() {
 	proxyTarget := flag.String("proxy-target", "", "Target server URL for proxy mode")
 	proxyTimeout := flag.Duration("proxy-timeout", 30*time.Second, "Timeout for proxy requests")
 
+	// TLS flags
+	tlsEnabled := flag.Bool("tls-enabled", false, "Enable HTTPS/TLS")
+	tlsCertFile := flag.String("tls-cert-file", "", "Path to TLS certificate file")
+	tlsKeyFile := flag.String("tls-key-file", "", "Path to TLS private key file")
+
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
 	}
@@ -73,6 +78,9 @@ func main() {
 		ProxyEnabled:      proxyEnabled,
 		ProxyTarget:       proxyTarget,
 		ProxyTimeout:      proxyTimeout,
+		TLSEnabled:        tlsEnabled,
+		TLSCertFile:       tlsCertFile,
+		TLSKeyFile:        tlsKeyFile,
 	}
 
 	// Load configuration with precedence (CLI > Env > File > Defaults)

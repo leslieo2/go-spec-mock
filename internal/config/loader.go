@@ -69,6 +69,9 @@ type CLIFlags struct {
 	ProxyEnabled      *bool
 	ProxyTarget       *string
 	ProxyTimeout      *time.Duration
+	TLSEnabled        *bool
+	TLSCertFile       *string
+	TLSKeyFile        *string
 }
 
 // loadFromFile loads configuration from a YAML or JSON file
@@ -173,6 +176,17 @@ func loadFromEnv(config *Config) {
 			config.Proxy.Timeout = duration
 		}
 	}
+	if val := os.Getenv(constants.EnvTLSEnabled); val != "" {
+		if enabled, err := strconv.ParseBool(val); err == nil {
+			config.TLS.Enabled = enabled
+		}
+	}
+	if val := os.Getenv(constants.EnvTLSCertFile); val != "" {
+		config.TLS.CertFile = val
+	}
+	if val := os.Getenv(constants.EnvTLSKeyFile); val != "" {
+		config.TLS.KeyFile = val
+	}
 }
 
 // overrideWithCLI overrides configuration with CLI flag values
@@ -243,6 +257,15 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	if flags.ProxyTimeout != nil && *flags.ProxyTimeout > 0 {
 		config.Proxy.Timeout = *flags.ProxyTimeout
 	}
+	if flags.TLSEnabled != nil {
+		config.TLS.Enabled = *flags.TLSEnabled
+	}
+	if flags.TLSCertFile != nil && *flags.TLSCertFile != "" {
+		config.TLS.CertFile = *flags.TLSCertFile
+	}
+	if flags.TLSKeyFile != nil && *flags.TLSKeyFile != "" {
+		config.TLS.KeyFile = *flags.TLSKeyFile
+	}
 }
 
 // mergeConfig merges file configuration into the base configuration
@@ -307,6 +330,17 @@ func mergeConfig(base *Config, file *Config) {
 	}
 	if file.HotReload.Debounce > 0 {
 		base.HotReload.Debounce = file.HotReload.Debounce
+	}
+
+	// Merge TLS configuration
+	if file.TLS.Enabled != base.TLS.Enabled {
+		base.TLS.Enabled = file.TLS.Enabled
+	}
+	if file.TLS.CertFile != "" {
+		base.TLS.CertFile = file.TLS.CertFile
+	}
+	if file.TLS.KeyFile != "" {
+		base.TLS.KeyFile = file.TLS.KeyFile
 	}
 }
 

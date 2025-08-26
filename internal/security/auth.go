@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 type APIKey struct {
@@ -155,9 +156,9 @@ func (am *AuthManager) ExtractAPIKey(r *http.Request) string {
 	}
 
 	// Check Authorization header (Bearer token)
-	authHeader := r.Header.Get("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	authHeader := r.Header.Get(constants.HeaderAuthorization)
+	if strings.HasPrefix(authHeader, constants.BearerPrefix) {
+		return strings.TrimSpace(strings.TrimPrefix(authHeader, constants.BearerPrefix))
 	}
 
 	return ""
@@ -187,12 +188,12 @@ func (am *AuthManager) Middleware(next http.Handler) http.Handler {
 
 		key := am.ExtractAPIKey(r)
 		if key == "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
+			w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+			w.WriteHeader(constants.StatusUnauthorized)
 			response := map[string]interface{}{
 				"error":   "Authentication required",
 				"message": "API key is required to access this endpoint",
-				"code":    "UNAUTHORIZED",
+				"code":    constants.ErrorCodeUnauthorized,
 			}
 			jsonResponse, _ := json.Marshal(response)
 			_, _ = w.Write(jsonResponse)
@@ -201,19 +202,19 @@ func (am *AuthManager) Middleware(next http.Handler) http.Handler {
 
 		apiKey, err := am.ValidateAPIKey(key)
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			code := "INVALID_API_KEY"
+			w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+			w.WriteHeader(constants.StatusUnauthorized)
+			code := constants.ErrorCodeInvalidAPIKey
 			message := err.Error()
 
 			// Map specific error types to codes
 			switch {
 			case strings.Contains(message, "expired"):
-				code = "API_KEY_EXPIRED"
+				code = constants.ErrorCodeAPIKeyExpired
 			case strings.Contains(message, "disabled"):
-				code = "API_KEY_DISABLED"
+				code = constants.ErrorCodeAPIKeyDisabled
 			case strings.Contains(message, "invalid"):
-				code = "INVALID_API_KEY"
+				code = constants.ErrorCodeInvalidAPIKey
 			}
 
 			response := map[string]interface{}{
@@ -234,9 +235,9 @@ func (am *AuthManager) Middleware(next http.Handler) http.Handler {
 
 func (am *AuthManager) shouldSkipAuth(path string) bool {
 	skippedPaths := []string{
-		"/health",
-		"/ready",
-		"/metrics",
+		constants.PathHealth,
+		constants.PathReady,
+		constants.PathMetrics,
 	}
 
 	for _, skipped := range skippedPaths {

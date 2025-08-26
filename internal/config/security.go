@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 // SecurityConfig contains security-related configuration
@@ -91,8 +93,8 @@ func DefaultSecurityConfig() SecurityConfig {
 func DefaultAuthConfig() AuthConfig {
 	return AuthConfig{
 		Enabled:        false,
-		HeaderName:     "X-API-Key",
-		QueryParamName: "api_key",
+		HeaderName:     constants.HeaderXAPIKey,
+		QueryParamName: constants.ContextKeyAPIKeyStr,
 		Keys:           []APIKeyConfig{},
 		RateLimit:      nil,
 	}
@@ -102,7 +104,7 @@ func DefaultAuthConfig() AuthConfig {
 func DefaultRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
 		Enabled:  true,
-		Strategy: "ip",
+		Strategy: constants.RateLimitStrategyIP,
 		Global: &GlobalRateLimit{
 			Enabled:           true,
 			RequestsPerSecond: 100,
@@ -135,8 +137,8 @@ func DefaultCORSConfig() CORSConfig {
 	return CORSConfig{
 		Enabled:          true,
 		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"},
+		AllowedMethods:   []string{constants.MethodGET, constants.MethodPOST, constants.MethodPUT, constants.MethodDELETE, constants.MethodOPTIONS, constants.MethodPATCH},
+		AllowedHeaders:   []string{constants.HeaderContentType, constants.HeaderAuthorization, constants.HeaderAccept, constants.HeaderXRequestedWith},
 		AllowCredentials: false,
 		MaxAge:           86400, // 24 hours
 	}
@@ -192,7 +194,7 @@ func (r *RateLimitConfig) Validate() error {
 	var errs []error
 
 	if r.Enabled {
-		if r.Strategy != "ip" && r.Strategy != "api_key" && r.Strategy != "both" {
+		if r.Strategy != constants.RateLimitStrategyIP && r.Strategy != constants.RateLimitStrategyAPIKey && r.Strategy != constants.RateLimitStrategyBoth {
 			errs = append(errs, errors.New("strategy must be one of: ip, api_key, both"))
 		}
 

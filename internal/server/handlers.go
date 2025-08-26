@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"go.uber.org/zap"
 )
@@ -26,8 +27,8 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+	w.WriteHeader(constants.StatusOK)
 	_ = json.NewEncoder(w).Encode(health)
 
 	s.logger.Logger.Debug("Health check completed",
@@ -44,10 +45,10 @@ func (s *Server) readinessHandler(w http.ResponseWriter, r *http.Request) {
 	ready := len(s.routes) > 0 && s.parser != nil
 
 	if ready {
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(constants.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
+		w.WriteHeader(constants.StatusServiceUnavailable)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "not ready"})
 	}
 
@@ -97,11 +98,11 @@ func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	doc.Observability.Health = "/health"
-	doc.Observability.Metrics = "/metrics"
-	doc.Observability.Readiness = "/ready"
+	doc.Observability.Health = constants.PathHealth
+	doc.Observability.Metrics = constants.PathMetrics
+	doc.Observability.Readiness = constants.PathReady
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
 	_ = json.NewEncoder(w).Encode(doc)
 
 	s.logger.Logger.Debug("Documentation served",

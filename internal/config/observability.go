@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"strings"
+
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 // ObservabilityConfig contains observability-related configuration
@@ -60,7 +62,7 @@ func DefaultMetricsConfig() MetricsConfig {
 	return MetricsConfig{
 		Enabled: true,
 		Port:    "9090",
-		Path:    "/metrics",
+		Path:    constants.PathMetrics,
 	}
 }
 

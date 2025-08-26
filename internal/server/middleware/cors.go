@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 // CORSMiddleware creates a CORS middleware with the given configuration
@@ -29,7 +31,7 @@ func NewCORSMiddleware(allowedOrigins, allowedMethods, allowedHeaders []string, 
 // Handler returns the CORS middleware handler
 func (c *CORSMiddleware) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
+		origin := r.Header.Get(constants.HeaderOrigin)
 
 		// Check if origin is allowed
 		allowed := false
@@ -41,23 +43,23 @@ func (c *CORSMiddleware) Handler(next http.Handler) http.Handler {
 		}
 
 		if allowed {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set(constants.HeaderAccessControlAllowOrigin, origin)
 			if len(c.AllowedMethods) > 0 {
-				w.Header().Set("Access-Control-Allow-Methods", strings.Join(c.AllowedMethods, ", "))
+				w.Header().Set(constants.HeaderAccessControlAllowMethods, strings.Join(c.AllowedMethods, ", "))
 			}
 			if len(c.AllowedHeaders) > 0 {
-				w.Header().Set("Access-Control-Allow-Headers", strings.Join(c.AllowedHeaders, ", "))
+				w.Header().Set(constants.HeaderAccessControlAllowHeaders, strings.Join(c.AllowedHeaders, ", "))
 			}
 			if c.AllowCredentials {
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set(constants.HeaderAccessControlAllowCredentials, "true")
 			}
 			if c.MaxAge > 0 {
-				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", c.MaxAge))
+				w.Header().Set(constants.HeaderAccessControlMaxAge, fmt.Sprintf("%d", c.MaxAge))
 			}
 		}
 
 		// Handle preflight requests
-		if r.Method == "OPTIONS" {
+		if r.Method == constants.MethodOPTIONS {
 			w.WriteHeader(http.StatusOK)
 			return
 		}

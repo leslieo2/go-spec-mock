@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 // SecurityHeadersConfig defines configuration for security headers
@@ -24,13 +26,13 @@ func SecurityHeadersMiddleware(config SecurityHeadersConfig) func(http.Handler) 
 			}
 
 			// Security headers
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("X-Frame-Options", "DENY")
-			w.Header().Set("X-XSS-Protection", "1; mode=block")
-			w.Header().Set("Strict-Transport-Security", fmt.Sprintf("max-age=%d; includeSubDomains", config.HSTSMaxAge))
+			w.Header().Set(constants.HeaderXContentTypeOptions, constants.XContentTypeOptionsNoSniff)
+			w.Header().Set(constants.HeaderXFrameOptions, constants.XFrameOptionsDeny)
+			w.Header().Set(constants.HeaderXXSSProtection, constants.XXSSProtectionBlock)
+			w.Header().Set(constants.HeaderStrictTransportSecurity, fmt.Sprintf("max-age=%d; includeSubDomains", config.HSTSMaxAge))
 
 			if config.ContentSecurityPolicy != "" {
-				w.Header().Set("Content-Security-Policy", config.ContentSecurityPolicy)
+				w.Header().Set(constants.HeaderContentSecurityPolicy, config.ContentSecurityPolicy)
 			}
 
 			// Allowed hosts check
@@ -44,7 +46,7 @@ func SecurityHeadersMiddleware(config SecurityHeadersConfig) func(http.Handler) 
 					}
 				}
 				if !allowed {
-					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
 					w.WriteHeader(http.StatusForbidden)
 					response := map[string]interface{}{
 						"error":   "FORBIDDEN",

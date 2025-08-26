@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"gopkg.in/yaml.v3"
 )
 
@@ -112,62 +113,62 @@ func loadFromFile(filePath string) (*Config, error) {
 // loadFromEnv loads configuration from environment variables
 func loadFromEnv(config *Config) {
 	// Server configuration
-	if val := os.Getenv("GO_SPEC_MOCK_HOST"); val != "" {
+	if val := os.Getenv(constants.EnvHost); val != "" {
 		config.Server.Host = val
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_PORT"); val != "" {
+	if val := os.Getenv(constants.EnvPort); val != "" {
 		config.Server.Port = val
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_METRICS_PORT"); val != "" {
+	if val := os.Getenv(constants.EnvMetricsPort); val != "" {
 		config.Server.MetricsPort = val
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_READ_TIMEOUT"); val != "" {
+	if val := os.Getenv(constants.EnvReadTimeout); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			config.Server.ReadTimeout = duration
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_WRITE_TIMEOUT"); val != "" {
+	if val := os.Getenv(constants.EnvWriteTimeout); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			config.Server.WriteTimeout = duration
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_IDLE_TIMEOUT"); val != "" {
+	if val := os.Getenv(constants.EnvIdleTimeout); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			config.Server.IdleTimeout = duration
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_MAX_REQUEST_SIZE"); val != "" {
+	if val := os.Getenv(constants.EnvMaxRequestSize); val != "" {
 		if size, err := strconv.ParseInt(val, 10, 64); err == nil {
 			config.Server.MaxRequestSize = size
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_SHUTDOWN_TIMEOUT"); val != "" {
+	if val := os.Getenv(constants.EnvShutdownTimeout); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			config.Server.ShutdownTimeout = duration
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_SPEC_FILE"); val != "" {
+	if val := os.Getenv(constants.EnvSpecFile); val != "" {
 		config.SpecFile = val
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_HOT_RELOAD"); val != "" {
+	if val := os.Getenv(constants.EnvHotReload); val != "" {
 		if enabled, err := strconv.ParseBool(val); err == nil {
 			config.HotReload.Enabled = enabled
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE"); val != "" {
+	if val := os.Getenv(constants.EnvHotReloadDebounce); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			config.HotReload.Debounce = duration
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_PROXY_ENABLED"); val != "" {
+	if val := os.Getenv(constants.EnvProxyEnabled); val != "" {
 		if enabled, err := strconv.ParseBool(val); err == nil {
 			config.Proxy.Enabled = enabled
 		}
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_PROXY_TARGET"); val != "" {
+	if val := os.Getenv(constants.EnvProxyTarget); val != "" {
 		config.Proxy.Target = val
 	}
-	if val := os.Getenv("GO_SPEC_MOCK_PROXY_TIMEOUT"); val != "" {
+	if val := os.Getenv(constants.EnvProxyTimeout); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			config.Proxy.Timeout = duration
 		}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/hotreload"
 	"github.com/leslieo2/go-spec-mock/internal/security"
 	"github.com/leslieo2/go-spec-mock/internal/server"
@@ -34,7 +35,7 @@ func main() {
 	// Security flags
 	authEnabled := flag.Bool("auth-enabled", false, "Enable API key authentication")
 	rateLimitEnabled := flag.Bool("rate-limit-enabled", false, "Enable rate limiting")
-	rateLimitStrategy := flag.String("rate-limit-strategy", "ip", "Rate limiting strategy: ip, api_key, both")
+	rateLimitStrategy := flag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key, both")
 	rateLimitRPS := flag.Int("rate-limit-rps", 100, "Global rate limit requests per second")
 	generateKey := flag.String("generate-key", "", "Generate a new API key with given name")
 

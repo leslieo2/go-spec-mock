@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 type Parser struct {
@@ -65,7 +67,13 @@ func (p *Parser) preGenerateExamples(operation *openapi3.Operation) {
 
 	// Common status codes as set for O(1) lookup
 	commonCodes := map[string]struct{}{
-		"200": {}, "201": {}, "400": {}, "401": {}, "403": {}, "404": {}, "500": {},
+		strconv.Itoa(constants.StatusOK):                  {},
+		strconv.Itoa(constants.StatusCreated):             {},
+		strconv.Itoa(constants.StatusBadRequest):          {},
+		strconv.Itoa(constants.StatusUnauthorized):        {},
+		strconv.Itoa(constants.StatusForbidden):           {},
+		strconv.Itoa(constants.StatusNotFound):            {},
+		strconv.Itoa(constants.StatusInternalServerError): {},
 	}
 
 	// Get all response codes and only process common ones
@@ -97,7 +105,7 @@ func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode st
 		return nil, fmt.Errorf("no content defined for response %s", statusCode)
 	}
 
-	jsonContent := content.Get("application/json")
+	jsonContent := content.Get(constants.ContentTypeJSON)
 	if jsonContent == nil {
 		return nil, fmt.Errorf("no application/json content defined")
 	}
@@ -152,13 +160,13 @@ func generateExampleFromSchema(schema *openapi3.Schema) interface{} {
 }
 
 var methodMap = map[string]struct{}{
-	"GET":     {},
-	"POST":    {},
-	"PUT":     {},
-	"DELETE":  {},
-	"PATCH":   {},
-	"HEAD":    {},
-	"OPTIONS": {},
+	constants.MethodGET:     {},
+	constants.MethodPOST:    {},
+	constants.MethodPUT:     {},
+	constants.MethodDELETE:  {},
+	constants.MethodPATCH:   {},
+	constants.MethodHEAD:    {},
+	constants.MethodOPTIONS: {},
 }
 
 type Route struct {

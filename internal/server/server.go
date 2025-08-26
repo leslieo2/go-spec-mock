@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
 	"github.com/leslieo2/go-spec-mock/internal/security"
@@ -95,9 +96,9 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Add observability endpoints
-	mux.HandleFunc("/health", s.healthHandler)
-	mux.HandleFunc("/metrics", s.metricsHandler)
-	mux.HandleFunc("/ready", s.readinessHandler)
+	mux.HandleFunc(constants.PathHealth, s.healthHandler)
+	mux.HandleFunc(constants.PathMetrics, s.metricsHandler)
+	mux.HandleFunc(constants.PathReady, s.readinessHandler)
 
 	// Register OpenAPI routes first with proper synchronization
 	s.mu.RLock()
@@ -149,7 +150,7 @@ func (s *Server) Start() error {
 	var metricsServer *http.Server
 	if s.metrics != nil {
 		metricsMux := http.NewServeMux()
-		metricsMux.Handle("/metrics", s.metrics.Handler())
+		metricsMux.Handle(constants.PathMetrics, s.metrics.Handler())
 		metricsServer = &http.Server{
 			Addr:              fmt.Sprintf(":%s", s.config.Server.MetricsPort),
 			Handler:           metricsMux,

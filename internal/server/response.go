@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
 )
 
@@ -28,7 +30,7 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 	var params []string
 	for key, values := range query {
 		// Skip internal parameters that don't affect response content
-		if key == "__statusCode" || key == "_" {
+		if key == constants.QueryParamStatusCode || key == "_" {
 			continue
 		}
 		for _, value := range values {
@@ -46,9 +48,9 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 	}
 
 	// Always include status code as it's a primary cache key component
-	statusCode := query.Get("__statusCode")
+	statusCode := query.Get(constants.QueryParamStatusCode)
 	if statusCode == "" {
-		statusCode = "200"
+		statusCode = strconv.Itoa(constants.StatusOK)
 	}
 
 	// Include additional request context to prevent collisions
@@ -58,7 +60,7 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 	var contextParts []string
 
 	// Add authentication context if available
-	if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+	if authHeader := r.Header.Get(constants.HeaderAuthorization); authHeader != "" {
 		// Use a hash of the auth header to avoid storing sensitive data in cache keys
 		h := sha256.New()
 		h.Write([]byte(authHeader))
@@ -66,11 +68,11 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 	}
 
 	// Add content negotiation headers
-	if accept := r.Header.Get("Accept"); accept != "" && accept != "*/*" {
+	if accept := r.Header.Get(constants.HeaderAccept); accept != "" && accept != "*/*" {
 		contextParts = append(contextParts, "accept:"+accept)
 	}
 
-	if contentType := r.Header.Get("Content-Type"); contentType != "" {
+	if contentType := r.Header.Get(constants.HeaderContentType); contentType != "" {
 		contextParts = append(contextParts, "content-type:"+contentType)
 	}
 
@@ -110,8 +112,8 @@ func (s *Server) cacheResponse(cacheKey string, statusCode int, body []byte) {
 
 // getStatusCodeFromRequest extracts the desired status code from the request
 func (s *Server) getStatusCodeFromRequest(r *http.Request) string {
-	statusCode := "200"
-	if override := r.URL.Query().Get("__statusCode"); override != "" {
+	statusCode := strconv.Itoa(constants.StatusOK)
+	if override := r.URL.Query().Get(constants.QueryParamStatusCode); override != "" {
 		statusCode = override
 	}
 	return statusCode
@@ -149,21 +151,21 @@ func parseStatusCode(code string) int {
 	var statusCode int
 	_, err := fmt.Sscanf(code, "%d", &statusCode)
 	if err != nil {
-		return 200
+		return constants.StatusOK
 	}
 	return statusCode
 }
 
 // sendJSONResponse sends a JSON response with the specified status code
 func (s *Server) sendJSONResponse(w http.ResponseWriter, statusCode int, body []byte) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
 	w.WriteHeader(statusCode)
 	_, _ = w.Write(body)
 }
 
 // sendErrorResponse sends a JSON error response
 func (s *Server) sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
 	w.WriteHeader(statusCode)
 	response := map[string]string{"error": message}
 	_ = json.NewEncoder(w).Encode(response)
@@ -171,8 +173,8 @@ func (s *Server) sendErrorResponse(w http.ResponseWriter, statusCode int, messag
 
 // sendMethodNotAllowedResponse sends a 405 Method Not Allowed response
 func (s *Server) sendMethodNotAllowedResponse(w http.ResponseWriter, methods []string, requestedMethod string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+	w.WriteHeader(constants.StatusMethodNotAllowed)
 	response := map[string]interface{}{
 		"error":   fmt.Sprintf("Method %s not allowed", requestedMethod),
 		"methods": methods,

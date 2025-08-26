@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 // Proxy represents a reverse proxy handler
@@ -71,16 +72,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // removeHopByHopHeaders removes hop-by-hop headers that should not be forwarded
 func removeHopByHopHeaders(headers http.Header) {
-	hopHeaders := []string{
-		"Connection",
-		"Keep-Alive",
-		"Proxy-Authenticate",
-		"Proxy-Authorization",
-		"Te",
-		"Trailer",
-		"Transfer-Encoding",
-		"Upgrade",
-	}
+	hopHeaders := constants.HopHeaders
 
 	for _, h := range hopHeaders {
 		headers.Del(h)

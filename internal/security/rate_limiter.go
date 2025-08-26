@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/time/rate"
 )
@@ -191,21 +192,21 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 				status = &RateLimitStatus{RetryAfter: limit.WindowSize}
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(status.Limit))
-			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(status.Remaining))
-			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(status.Reset.Unix(), 10))
+			w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+			w.Header().Set(constants.HeaderXRateLimitLimit, strconv.Itoa(status.Limit))
+			w.Header().Set(constants.HeaderXRateLimitRemaining, strconv.Itoa(status.Remaining))
+			w.Header().Set(constants.HeaderXRateLimitReset, strconv.FormatInt(status.Reset.Unix(), 10))
 
 			if status.RetryAfter > 0 {
-				w.Header().Set("Retry-After", strconv.Itoa(int(status.RetryAfter.Seconds())))
+				w.Header().Set(constants.HeaderRetryAfter, strconv.Itoa(int(status.RetryAfter.Seconds())))
 			}
 
-			w.WriteHeader(http.StatusTooManyRequests)
+			w.WriteHeader(constants.StatusTooManyRequests)
 
 			response := map[string]interface{}{
-				"error":       "RATE_LIMIT_EXCEEDED",
+				"error":       constants.ErrorCodeRateLimitExceeded,
 				"message":     fmt.Sprintf("Rate limit exceeded. Try again in %v", status.RetryAfter),
-				"code":        "RATE_LIMIT_EXCEEDED",
+				"code":        constants.ErrorCodeRateLimitExceeded,
 				"retry_after": int(status.RetryAfter.Seconds()),
 			}
 			jsonResponse, _ := json.Marshal(response)
@@ -218,9 +219,9 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 
 		// Add rate limit headers
 		status, _ := rl.GetRateLimitStatus(identifier, limit)
-		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(status.Limit))
-		w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(status.Remaining))
-		w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(status.Reset.Unix(), 10))
+		w.Header().Set(constants.HeaderXRateLimitLimit, strconv.Itoa(status.Limit))
+		w.Header().Set(constants.HeaderXRateLimitRemaining, strconv.Itoa(status.Remaining))
+		w.Header().Set(constants.HeaderXRateLimitReset, strconv.FormatInt(status.Reset.Unix(), 10))
 
 		next.ServeHTTP(w, r)
 	})
@@ -228,23 +229,23 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 
 func (rl *RateLimiter) getIdentifier(r *http.Request) string {
 	switch rl.config.Strategy {
-	case "api_key":
-		if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
+	case constants.RateLimitStrategyAPIKey:
+		if apiKey := r.Header.Get(constants.HeaderXAPIKey); apiKey != "" {
 			return "api_key:" + apiKey
 		}
-		if apiKey := r.URL.Query().Get("api_key"); apiKey != "" {
+		if apiKey := r.URL.Query().Get(constants.RateLimitStrategyAPIKey); apiKey != "" {
 			return "api_key:" + apiKey
 		}
-	case "both":
+	case constants.RateLimitStrategyBoth:
 		// Combine API key and IP
 		identifier := "ip:" + rl.getClientIP(r)
-		if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
+		if apiKey := r.Header.Get(constants.HeaderXAPIKey); apiKey != "" {
 			identifier += "|api_key:" + apiKey
-		} else if apiKey := r.URL.Query().Get("api_key"); apiKey != "" {
+		} else if apiKey := r.URL.Query().Get(constants.RateLimitStrategyAPIKey); apiKey != "" {
 			identifier += "|api_key:" + apiKey
 		}
 		return identifier
-	default: // "ip"
+	default: // constants.RateLimitStrategyIP
 		return "ip:" + rl.getClientIP(r)
 	}
 
@@ -253,7 +254,7 @@ func (rl *RateLimiter) getIdentifier(r *http.Request) string {
 
 func (rl *RateLimiter) getClientIP(r *http.Request) string {
 	// Check X-Forwarded-For header first
-	xff := r.Header.Get("X-Forwarded-For")
+	xff := r.Header.Get(constants.HeaderXForwardedFor)
 	if xff != "" {
 		ips := strings.Split(xff, ",")
 		if len(ips) > 0 {
@@ -262,7 +263,7 @@ func (rl *RateLimiter) getClientIP(r *http.Request) string {
 	}
 
 	// Check X-Real-IP header
-	xri := r.Header.Get("X-Real-IP")
+	xri := r.Header.Get(constants.HeaderXRealIP)
 	if xri != "" {
 		return strings.TrimSpace(xri)
 	}
@@ -309,9 +310,9 @@ func (rl *RateLimiter) getRateLimit(identifier string) *config.RateLimit {
 
 func (rl *RateLimiter) shouldSkipRateLimit(path string) bool {
 	skippedPaths := []string{
-		"/health",
-		"/ready",
-		"/metrics",
+		constants.PathHealth,
+		constants.PathReady,
+		constants.PathMetrics,
 	}
 
 	for _, skipped := range skippedPaths {

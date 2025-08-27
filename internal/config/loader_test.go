@@ -10,7 +10,6 @@ import (
 // Helper functions for pointers
 func stringPtr(s string) *string { return &s }
 func boolPtr(b bool) *bool       { return &b }
-func intPtr(i int) *int          { return &i }
 
 func TestLoadConfig(t *testing.T) {
 	tests := []struct {
@@ -377,11 +376,9 @@ func Test_overrideWithCLI(t *testing.T) {
 			}(),
 		},
 		{
-			name:       "Override RateLimitRPS and initialize GlobalRateLimit",
+			name:       "Test GlobalRateLimit initialization",
 			initialCfg: DefaultConfig(),
-			cliFlags: &CLIFlags{
-				RateLimitRPS: intPtr(100),
-			},
+			cliFlags:   &CLIFlags{},
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
 				cfg.Security.RateLimit.Global = &RateLimit{
@@ -393,7 +390,7 @@ func Test_overrideWithCLI(t *testing.T) {
 			}(),
 		},
 		{
-			name: "Override RateLimitRPS when GlobalRateLimit already exists",
+			name: "Test GlobalRateLimit when already exists",
 			initialCfg: func() *Config {
 				cfg := DefaultConfig()
 				cfg.Security.RateLimit.Global = &RateLimit{
@@ -403,15 +400,13 @@ func Test_overrideWithCLI(t *testing.T) {
 				}
 				return cfg
 			}(),
-			cliFlags: &CLIFlags{
-				RateLimitRPS: intPtr(150),
-			},
+			cliFlags: &CLIFlags{},
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
 				cfg.Security.RateLimit.Global = &RateLimit{
-					RequestsPerSecond: 150,
-					BurstSize:         100,         // Should remain unchanged
-					WindowSize:        time.Second, // Should remain unchanged
+					RequestsPerSecond: 50,
+					BurstSize:         100,
+					WindowSize:        time.Second,
 				}
 				return cfg
 			}(),
@@ -453,7 +448,7 @@ func Test_overrideWithCLI(t *testing.T) {
 			}
 			if cfg.Security.RateLimit.Global != nil && tt.expectedCfg.Security.RateLimit.Global != nil {
 				if cfg.Security.RateLimit.Global.RequestsPerSecond != tt.expectedCfg.Security.RateLimit.Global.RequestsPerSecond {
-					t.Errorf("RateLimitRPS: got %d, want %d", cfg.Security.RateLimit.Global.RequestsPerSecond, tt.expectedCfg.Security.RateLimit.Global.RequestsPerSecond)
+					t.Errorf("GlobalRateLimit: got %d, want %d", cfg.Security.RateLimit.Global.RequestsPerSecond, tt.expectedCfg.Security.RateLimit.Global.RequestsPerSecond)
 				}
 				if cfg.Security.RateLimit.Global.BurstSize != tt.expectedCfg.Security.RateLimit.Global.BurstSize {
 					t.Errorf("RateLimitBurstSize: got %d, want %d", cfg.Security.RateLimit.Global.BurstSize, tt.expectedCfg.Security.RateLimit.Global.BurstSize)

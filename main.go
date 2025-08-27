@@ -31,7 +31,6 @@ func main() {
 	authEnabled := pflag.Bool("auth-enabled", false, "Enable API key authentication")
 	rateLimitEnabled := pflag.Bool("rate-limit-enabled", false, "Enable rate limiting")
 	rateLimitStrategy := pflag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key")
-	rateLimitRPS := pflag.Int("rate-limit-rps", 100, "Global rate limit requests per second")
 	generateKey := pflag.String("generate-key", "", "Generate a new API key with given name")
 
 	// Hot reload flags
@@ -57,7 +56,6 @@ func main() {
 		AuthEnabled:       authEnabled,
 		RateLimitEnabled:  rateLimitEnabled,
 		RateLimitStrategy: rateLimitStrategy,
-		RateLimitRPS:      rateLimitRPS,
 		GenerateKey:       generateKey,
 		HotReload:         hotReload,
 		ProxyEnabled:      proxyEnabled,
@@ -150,9 +148,8 @@ func main() {
 		log.Printf("API key authentication enabled")
 	}
 	if cfg.Security.RateLimit.Enabled {
-		log.Printf("Rate limiting enabled (strategy: %s, rps: %d)",
-			cfg.Security.RateLimit.Strategy,
-			cfg.Security.RateLimit.Global.RequestsPerSecond)
+		log.Printf("Rate limiting enabled (strategy: %s)",
+			cfg.Security.RateLimit.Strategy)
 	}
 
 	if err := mockServer.Start(); err != nil {
@@ -182,7 +179,6 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  -auth-enabled\t\tEnable API key authentication (default: false)\n")
 	fmt.Fprintf(os.Stderr, "  -rate-limit-enabled\tEnable rate limiting (default: false)\n")
 	fmt.Fprintf(os.Stderr, "  -rate-limit-strategy\tRate limiting strategy: ip, api_key (default: ip)\n")
-	fmt.Fprintf(os.Stderr, "  -rate-limit-rps\t\tGlobal rate limit requests per second (default: 100)\n")
 	fmt.Fprintf(os.Stderr, "  -generate-key\t\tGenerate a new API key with given name\n")
 	fmt.Fprintf(os.Stderr, "\nHot reload flags:\n")
 	fmt.Fprintf(os.Stderr, "  -hot-reload\t\tEnable hot reload for specification file (default: true)\n")

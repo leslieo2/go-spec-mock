@@ -46,7 +46,7 @@ Here's the configuration documentation for the `Go-Spec-Mock` project, detailing
 | `Config.Security.Auth.RateLimit` | `security.auth.rate_limit` | N/A | N/A | `nil` | Rate limit settings for authentication. |
 | `Config.Security.RateLimit.Enabled` | `security.rate_limit.enabled` | `--rate-limit-enabled` | N/A | `true` | Enable global rate limiting. |
 | `Config.Security.RateLimit.Strategy` | `security.rate_limit.strategy` | `--rate-limit-strategy` | N/A | `ip` | Rate limiting strategy (`ip` or `api_key`). |
-| `Config.Security.RateLimit.Global.RequestsPerSecond` | `security.rate_limit.global.requests_per_second` | `--rate-limit-rps` | N/A | `100` | Global rate limit requests per second. |
+| `Config.Security.RateLimit.Global.RequestsPerSecond` | `security.rate_limit.global.requests_per_second` | N/A | N/A | `100` | Global rate limit requests per second. |
 | `Config.Security.RateLimit.Global.BurstSize` | `security.rate_limit.global.burst_size` | N/A | N/A | `200` | Global rate limit burst size. |
 | `Config.Security.RateLimit.Global.WindowSize` | `security.rate_limit.global.window_size` | N/A | N/A | `1m` | Global rate limit window size. |
 | `Config.Security.RateLimit.ByAPIKey` | `security.rate_limit.by_api_key` | N/A | N/A | `{}` (empty map) | Per-API key rate limit settings. |

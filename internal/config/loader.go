@@ -59,7 +59,6 @@ type CLIFlags struct {
 	AuthEnabled       *bool
 	RateLimitEnabled  *bool
 	RateLimitStrategy *string
-	RateLimitRPS      *int
 	GenerateKey       *string
 	HotReload         *bool
 	ProxyEnabled      *bool
@@ -211,15 +210,6 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 	if flags.RateLimitStrategy != nil && isFlagSet("rate-limit-strategy") && (*flags.RateLimitStrategy == constants.RateLimitStrategyIP || *flags.RateLimitStrategy == constants.RateLimitStrategyAPIKey) {
 		config.Security.RateLimit.Strategy = *flags.RateLimitStrategy
-	}
-	if flags.RateLimitRPS != nil && isFlagSet("rate-limit-rps") {
-		if config.Security.RateLimit.Global == nil {
-			// Use default global rate limit configuration and override RPS
-			config.Security.RateLimit.Global = DefaultRateLimit()
-			config.Security.RateLimit.Global.RequestsPerSecond = *flags.RateLimitRPS
-		} else {
-			config.Security.RateLimit.Global.RequestsPerSecond = *flags.RateLimitRPS
-		}
 	}
 
 	// Spec file and hot reload

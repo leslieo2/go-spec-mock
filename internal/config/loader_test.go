@@ -9,7 +9,6 @@ import (
 
 // Helper functions for pointers
 func stringPtr(s string) *string { return &s }
-func boolPtr(b bool) *bool       { return &b }
 
 func TestLoadConfig(t *testing.T) {
 	tests := []struct {

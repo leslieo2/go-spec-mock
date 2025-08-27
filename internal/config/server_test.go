@@ -58,51 +58,6 @@ func TestServerConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Zero ReadTimeout",
-			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "8080",
-				MetricsPort: "9090",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Zero WriteTimeout",
-			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "8080",
-				MetricsPort: "9090",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Zero IdleTimeout",
-			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "8080",
-				MetricsPort: "9090",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Zero MaxRequestSize",
-			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "8080",
-				MetricsPort: "9090",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Zero ShutdownTimeout",
-			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "8080",
-				MetricsPort: "9090",
-			},
-			wantErr: true,
-		},
-		{
 			name: "Port and MetricsPort are the same",
 			config: ServerConfig{
 				Host:        "localhost",

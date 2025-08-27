@@ -11,7 +11,6 @@ import (
 // SecurityConfig contains security-related configuration
 type SecurityConfig struct {
 	RateLimit RateLimitConfig `json:"rate_limit" yaml:"rate_limit"`
-	Headers   SecurityHeaders `json:"headers" yaml:"headers"`
 	CORS      CORSConfig      `json:"cors" yaml:"cors"`
 }
 
@@ -40,12 +39,6 @@ func DefaultRateLimit() *RateLimit {
 	}
 }
 
-// SecurityHeaders contains security headers configuration
-type SecurityHeaders struct {
-	Enabled    bool `json:"enabled" yaml:"enabled"`
-	HSTSMaxAge int  `json:"hsts_max_age" yaml:"hsts_max_age"`
-}
-
 // CORSConfig contains CORS configuration
 type CORSConfig struct {
 	Enabled          bool     `json:"enabled" yaml:"enabled"`
@@ -60,7 +53,6 @@ type CORSConfig struct {
 func DefaultSecurityConfig() SecurityConfig {
 	return SecurityConfig{
 		RateLimit: DefaultRateLimitConfig(),
-		Headers:   DefaultSecurityHeaders(),
 		CORS:      DefaultCORSConfig(),
 	}
 }
@@ -84,14 +76,6 @@ func DefaultRateLimitConfig() RateLimitConfig {
 	}
 }
 
-// DefaultSecurityHeaders returns default security headers
-func DefaultSecurityHeaders() SecurityHeaders {
-	return SecurityHeaders{
-		Enabled:    true,
-		HSTSMaxAge: 31536000, // 1 year
-	}
-}
-
 // DefaultCORSConfig returns default CORS configuration
 func DefaultCORSConfig() CORSConfig {
 	return CORSConfig{
@@ -110,9 +94,6 @@ func (s *SecurityConfig) Validate() error {
 
 	if err := s.RateLimit.Validate(); err != nil {
 		errs = append(errs, fmt.Errorf("rate limit config validation failed: %w", err))
-	}
-	if err := s.Headers.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("security headers config validation failed: %w", err))
 	}
 	if err := s.CORS.Validate(); err != nil {
 		errs = append(errs, fmt.Errorf("CORS config validation failed: %w", err))
@@ -168,16 +149,6 @@ func (c *CORSConfig) Validate() error {
 		}
 		if len(c.AllowedMethods) == 0 {
 			return fmt.Errorf("allowed_methods must not be empty")
-		}
-	}
-	return nil
-}
-
-// Validate validates the security headers configuration
-func (h *SecurityHeaders) Validate() error {
-	if h.Enabled {
-		if h.HSTSMaxAge < 0 {
-			return fmt.Errorf("hsts_max_age must be non-negative")
 		}
 	}
 	return nil

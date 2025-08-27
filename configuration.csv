@@ -15,8 +15,6 @@ Config Field (Go Struct Path),YAML/JSON Key,CLI Flag,Environment Variable,Defaul
 `Config.Security.RateLimit.Global.WindowSize`,`security.rate_limit.global.window_size`,N/A,N/A,`1m`,Global rate limit window size.
 `Config.Security.RateLimit.ByAPIKey`,`security.rate_limit.by_api_key`,N/A,N/A,`{}` (empty map),Per-API key rate limit settings.
 `Config.Security.RateLimit.ByIP`,`security.rate_limit.by_ip`,N/A,N/A,"`(RPS: 60, Burst: 120, Window: 1m)`",Per-IP rate limit settings.
-`Config.Security.Headers.Enabled`,`security.headers.enabled`,N/A,N/A,`true`,Enable security headers.
-`Config.Security.Headers.HSTSMaxAge`,`security.headers.hsts_max_age`,N/A,N/A,`31536000` (1 year),HSTS Max-Age value.
 `Config.Security.CORS.Enabled`,`security.cors.enabled`,N/A,N/A,`true`,Enable CORS.
 `Config.Security.CORS.AllowedOrigins`,`security.cors.allowed_origins`,N/A,N/A,"`[""*""]`",List of allowed origins for CORS.
 `Config.Security.CORS.AllowedMethods`,`security.cors.allowed_methods`,N/A,N/A,"`[GET, POST, PUT, DELETE, OPTIONS, PATCH]`",List of allowed HTTP methods for CORS.

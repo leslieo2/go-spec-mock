@@ -64,21 +64,6 @@ const (
 	ContentTypeJSON = "application/json"
 )
 
-// Security header constants
-const (
-	HeaderXContentTypeOptions     = "X-Content-Type-Options"
-	HeaderXFrameOptions           = "X-Frame-Options"
-	HeaderXXSSProtection          = "X-XSS-Protection"
-	HeaderStrictTransportSecurity = "Strict-Transport-Security"
-)
-
-// Security header values
-const (
-	XContentTypeOptionsNoSniff = "nosniff"
-	XFrameOptionsDeny          = "DENY"
-	XXSSProtectionBlock        = "1; mode=block"
-)
-
 // CORS headers
 const (
 	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"

@@ -245,38 +245,7 @@ With this configuration, you can make requests to `http://localhost:8080`:
 
 ### Security Features
 
-Secure your mock server with API key authentication, rate limiting, security headers, and CORS. These are best configured via a configuration file.
-
-#### API Key Authentication
-
-Enable with `--auth-enabled` or in a config file. You can generate keys with the `--generate-key` flag.
-
-```bash
-# Generate a key named "my-app"
-go-spec-mock --spec-file ./examples/petstore.yaml --generate-key "my-app"
-```
-
-**Example `config.yaml`:**
-```yaml
-security:
-  auth:
-    enabled: true
-    header_name: "X-API-Key"      # or "Authorization" for Bearer tokens
-    query_param_name: "api_key"
-    keys:
-      - key: "your-generated-key-here"
-        name: "my-app"
-        enabled: true
-```
-
-**Usage:**
-```bash
-# Header authentication
-curl -H "X-API-Key: your-key-here" http://localhost:8080/pets
-
-# Query parameter authentication
-curl "http://localhost:8080/pets?api_key=your-key-here"
-```
+Secure your mock server with rate limiting and CORS. These are best configured via a configuration file.
 
 #### Rate Limiting
 
@@ -409,7 +378,6 @@ This project uses a `Makefile` to streamline common development tasks.
 | `make run-example-secure` | Run with security features enabled. |
 | `make run-example-secure-config` | Run with security-focused configuration. |
 | `make run-example-minimal` | Run with minimal configuration. |
-| `make generate-key` | Generate a new API key interactively. |
 | `make test` | Run all tests with coverage report. |
 | `make test-quick` | Run tests without coverage. |
 | `make fmt` | Format the Go source code. |
@@ -443,7 +411,7 @@ This project uses a `Makefile` to streamline common development tasks.
 │   ├── parser/                   # OpenAPI specification parsing logic
 │   ├── server/                   # HTTP server and routing logic
 │   │   └── middleware/           # HTTP middleware chain (CORS, security, logging, proxy)
-│   ├── security/                 # Authentication and rate limiting
+│   ├── security/                 # Rate limiting and CORS
 │   ├── observability/            # Logging, metrics, and health checks
 │   ├── hotreload/                # Hot reload functionality for specs and config
 │   ├── proxy/                    # Proxy functionality for undefined endpoints
@@ -475,8 +443,7 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 - [x] Request size limiting
 - [x] Configurable log levels (DEBUG, INFO, WARN, ERROR)
 - [x] Comprehensive security configuration (YAML/JSON)
-- [x] API key authentication with role-based access
-- [x] Rate limiting by IP, API key
+- [x] Rate limiting by IP
 - [x] CORS configuration with security headers
 - [ ] Sensitive data masking in logs
 
@@ -501,7 +468,6 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 
 #### 🔥 Developer Experience
 - [x] Hot reload for specifications and configuration
-- [x] Interactive API key generation
 - [x] Comprehensive CLI flags and environment variables
 </details>
 

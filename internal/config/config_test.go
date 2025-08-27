@@ -55,8 +55,14 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid Security Config",
 			config: &Config{
-				Server:        DefaultServerConfig(),
-				Security:      SecurityConfig{},
+				Server: DefaultServerConfig(),
+				Security: SecurityConfig{
+					RateLimit: RateLimitConfig{
+						Enabled:  true,
+						Strategy: "invalid",
+					},
+					CORS: DefaultCORSConfig(),
+				},
 				Observability: DefaultObservabilityConfig(),
 				SpecFile:      "test.yaml",
 				TLS:           DefaultTLSConfig(),

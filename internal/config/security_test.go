@@ -11,9 +11,6 @@ func TestDefaultSecurityConfig(t *testing.T) {
 	if cfg.RateLimit.Enabled != true {
 		t.Errorf("DefaultRateLimitConfig Enabled got %v, want true", cfg.RateLimit.Enabled)
 	}
-	if cfg.Headers.Enabled != true {
-		t.Errorf("DefaultSecurityHeaders Enabled got %v, want true", cfg.Headers.Enabled)
-	}
 	if cfg.CORS.Enabled != true {
 		t.Errorf("DefaultCORSConfig Enabled got %v, want true", cfg.CORS.Enabled)
 	}
@@ -174,44 +171,6 @@ func TestCORSConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestSecurityHeaders_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  SecurityHeaders
-		wantErr bool
-	}{
-		{
-			name:    "Valid SecurityHeaders Config Enabled",
-			config:  DefaultSecurityHeaders(),
-			wantErr: false,
-		},
-		{
-			name: "Valid SecurityHeaders Config Disabled",
-			config: SecurityHeaders{
-				Enabled: false,
-			},
-			wantErr: false,
-		},
-		{
-			name: "Enabled with Negative HSTSMaxAge",
-			config: SecurityHeaders{
-				Enabled:    true,
-				HSTSMaxAge: -1,
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SecurityHeaders.Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestRateLimit_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -278,16 +237,6 @@ func TestSecurityConfig_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Invalid Auth Config",
-			config: SecurityConfig{
-
-				RateLimit: DefaultRateLimitConfig(),
-				Headers:   DefaultSecurityHeaders(),
-				CORS:      DefaultCORSConfig(),
-			},
-			wantErr: true,
-		},
-		{
 			name: "Invalid RateLimit Config",
 			config: SecurityConfig{
 
@@ -295,20 +244,7 @@ func TestSecurityConfig_Validate(t *testing.T) {
 					Enabled:  true,
 					Strategy: "invalid",
 				},
-				Headers: DefaultSecurityHeaders(),
-				CORS:    DefaultCORSConfig(),
-			},
-			wantErr: true,
-		},
-		{
-			name: "Invalid Security Headers Config",
-			config: SecurityConfig{
 
-				RateLimit: DefaultRateLimitConfig(),
-				Headers: SecurityHeaders{
-					Enabled:    true,
-					HSTSMaxAge: -1,
-				},
 				CORS: DefaultCORSConfig(),
 			},
 			wantErr: true,
@@ -318,7 +254,7 @@ func TestSecurityConfig_Validate(t *testing.T) {
 			config: SecurityConfig{
 
 				RateLimit: DefaultRateLimitConfig(),
-				Headers:   DefaultSecurityHeaders(),
+
 				CORS: CORSConfig{
 					Enabled:        true,
 					AllowedOrigins: []string{},

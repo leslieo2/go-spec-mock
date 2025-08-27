@@ -23,15 +23,6 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 		handler = corsMiddleware.Handler(handler)
 	}
 
-	// Security headers middleware
-	if s.config.Security.Headers.Enabled {
-		securityConfig := middleware.SecurityHeadersConfig{
-			Enabled:    s.config.Security.Headers.Enabled,
-			HSTSMaxAge: s.config.Security.Headers.HSTSMaxAge,
-		}
-		handler = middleware.SecurityHeadersMiddleware(securityConfig)(handler)
-	}
-
 	// Rate limiting middleware
 	if s.rateLimiter != nil {
 		handler = s.rateLimiter.Middleware(handler)

@@ -279,7 +279,6 @@ func Test_loadFromEnv_Integration(t *testing.T) {
 				cfg := DefaultConfig()
 				cfg.Server.Host = "127.0.0.1"
 				cfg.Server.Port = "9000"
-				cfg.Server.MetricsPort = "9001"
 				cfg.SpecFile = "env_spec.yaml"
 				return cfg
 			}(),

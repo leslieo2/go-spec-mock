@@ -114,9 +114,7 @@ func loadFromEnv(config *Config) {
 	if val := os.Getenv(constants.EnvPort); val != "" {
 		config.Server.Port = val
 	}
-	if val := os.Getenv(constants.EnvMetricsPort); val != "" {
-		config.Server.MetricsPort = val
-	}
+
 	if val := os.Getenv(constants.EnvSpecFile); val != "" {
 		config.SpecFile = val
 	}
@@ -169,9 +167,6 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 	if flags.Port != nil && isFlagSet("port") && *flags.Port != "" {
 		config.Server.Port = *flags.Port
-	}
-	if flags.MetricsPort != nil && isFlagSet("metrics-port") && *flags.MetricsPort != "" {
-		config.Server.MetricsPort = *flags.MetricsPort
 	}
 
 	// Security flags
@@ -233,9 +228,6 @@ func mergeConfig(base *Config, file *Config) {
 	if file.Server.Port != "" {
 		base.Server.Port = file.Server.Port
 	}
-	if file.Server.MetricsPort != "" {
-		base.Server.MetricsPort = file.Server.MetricsPort
-	}
 
 	// Merge security configuration
 	if file.Security.RateLimit.Enabled != base.Security.RateLimit.Enabled {
@@ -248,12 +240,6 @@ func mergeConfig(base *Config, file *Config) {
 	}
 	if file.Observability.Logging.Format != "" {
 		base.Observability.Logging.Format = file.Observability.Logging.Format
-	}
-	if file.Observability.Metrics.Enabled != base.Observability.Metrics.Enabled {
-		base.Observability.Metrics = file.Observability.Metrics
-	}
-	if file.Observability.Metrics.Path != "" {
-		base.Observability.Metrics.Path = file.Observability.Metrics.Path
 	}
 
 	if file.SpecFile != "" {

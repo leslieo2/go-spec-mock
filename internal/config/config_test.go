@@ -72,16 +72,11 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid Observability Config",
 			config: &Config{
-				Server:   DefaultServerConfig(),
-				Security: DefaultSecurityConfig(),
-				Observability: ObservabilityConfig{
-					Metrics: MetricsConfig{
-						Enabled: true,
-						Path:    "", // Invalid path if enabled
-					},
-				},
-				SpecFile: "test.yaml",
-				TLS:      DefaultTLSConfig(),
+				Server:        DefaultServerConfig(),
+				Security:      DefaultSecurityConfig(),
+				Observability: ObservabilityConfig{},
+				SpecFile:      "test.yaml",
+				TLS:           DefaultTLSConfig(),
 			},
 			wantErr: true,
 		},

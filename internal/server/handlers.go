@@ -54,11 +54,6 @@ func (s *Server) readinessHandler(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-// MetricsHandler serves Prometheus metrics
-func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
-	s.metrics.Handler().ServeHTTP(w, r)
-}
-
 // DocumentationHandler serves API documentation
 func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
 
@@ -75,7 +70,6 @@ func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
 		Endpoints     []RouteInfo `json:"endpoints"`
 		Observability struct {
 			Health    string `json:"health"`
-			Metrics   string `json:"metrics"`
 			Readiness string `json:"readiness"`
 		} `json:"observability"`
 	}{
@@ -93,7 +87,6 @@ func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	doc.Observability.Health = constants.PathHealth
-	doc.Observability.Metrics = constants.PathMetrics
 	doc.Observability.Readiness = constants.PathReady
 
 	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)

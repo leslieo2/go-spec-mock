@@ -13,9 +13,6 @@ func TestDefaultServerConfig(t *testing.T) {
 	if cfg.Port != "8080" {
 		t.Errorf("DefaultServerConfig Port got %s, want 8080", cfg.Port)
 	}
-	if cfg.MetricsPort != "9090" {
-		t.Errorf("DefaultServerConfig MetricsPort got %s, want 9090", cfg.MetricsPort)
-	}
 
 }
 
@@ -33,38 +30,34 @@ func TestServerConfig_Validate(t *testing.T) {
 		{
 			name: "Empty Host",
 			config: ServerConfig{
-				Host:        "",
-				Port:        "8080",
-				MetricsPort: "9090",
+				Host: "",
+				Port: "8080",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid Port",
 			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "invalid",
-				MetricsPort: "9090",
+				Host: "localhost",
+				Port: "invalid",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid Metrics Port",
 			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "8080",
-				MetricsPort: "invalid",
+				Host: "localhost",
+				Port: "8080",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "Port and MetricsPort are the same",
 			config: ServerConfig{
-				Host:        "localhost",
-				Port:        "8080",
-				MetricsPort: "8080",
+				Host: "localhost",
+				Port: "8080",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 

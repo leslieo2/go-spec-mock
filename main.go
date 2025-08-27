@@ -21,7 +21,6 @@ func main() {
 	specFile := pflag.String("spec-file", "", "Path to OpenAPI specification file")
 	port := pflag.String("port", "8080", "Port to run the mock server on")
 	host := pflag.String("host", "localhost", "Host to run the mock server on")
-	metricsPort := pflag.String("metrics-port", "9090", "Port to run the metrics server on")
 
 	// Server configuration (timeouts and limits moved to config file/env vars only)
 
@@ -47,7 +46,6 @@ func main() {
 	cliFlags := &config.CLIFlags{
 		Host:              host,
 		Port:              port,
-		MetricsPort:       metricsPort,
 		SpecFile:          specFile,
 		RateLimitEnabled:  rateLimitEnabled,
 		RateLimitStrategy: rateLimitStrategy,
@@ -141,14 +139,13 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "\nServer configuration:\n")
 	fmt.Fprintf(os.Stderr, "  -host\t\t\tHost to run the mock server on (default: localhost)\n")
 	fmt.Fprintf(os.Stderr, "  -port\t\t\tPort to run the mock server on (default: 8080)\n")
-	fmt.Fprintf(os.Stderr, "  -metrics-port\t\tPort to run the metrics server on (default: 9090)\n")
 	fmt.Fprintf(os.Stderr, "\nSecurity flags:\n")
 	fmt.Fprintf(os.Stderr, "  -rate-limit-enabled\tEnable rate limiting (default: false)\n")
 	fmt.Fprintf(os.Stderr, "  -rate-limit-strategy\tRate limiting strategy: ip (default: ip)\n")
 	fmt.Fprintf(os.Stderr, "\nHot reload flags:\n")
 	fmt.Fprintf(os.Stderr, "  -hot-reload\t\tEnable hot reload for specification file (default: true)\n")
 	fmt.Fprintf(os.Stderr, "\nEnvironment variables:\n")
-	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_HOST, GO_SPEC_MOCK_PORT, GO_SPEC_MOCK_METRICS_PORT\n")
+	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_HOST, GO_SPEC_MOCK_PORT\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_READ_TIMEOUT, GO_SPEC_MOCK_WRITE_TIMEOUT, GO_SPEC_MOCK_IDLE_TIMEOUT\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_MAX_REQUEST_SIZE, GO_SPEC_MOCK_SHUTDOWN_TIMEOUT, GO_SPEC_MOCK_SPEC_FILE\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_HOT_RELOAD, GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE\n")
@@ -157,6 +154,6 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "\nExample usage:\n")
 	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -rate-limit-enabled\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -config ./config.yaml\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -port 8081 -metrics-port 9091\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -port 8081\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_PORT=8081 %s -spec-file ./examples/petstore.yaml\n", os.Args[0])
 }

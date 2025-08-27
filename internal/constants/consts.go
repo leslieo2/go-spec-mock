@@ -6,7 +6,6 @@ import "time"
 const (
 	EnvHost              = "GO_SPEC_MOCK_HOST"
 	EnvPort              = "GO_SPEC_MOCK_PORT"
-	EnvMetricsPort       = "GO_SPEC_MOCK_METRICS_PORT"
 	EnvReadTimeout       = "GO_SPEC_MOCK_READ_TIMEOUT"
 	EnvWriteTimeout      = "GO_SPEC_MOCK_WRITE_TIMEOUT"
 	EnvIdleTimeout       = "GO_SPEC_MOCK_IDLE_TIMEOUT"
@@ -129,7 +128,6 @@ const (
 const (
 	PathHealth        = "/health"
 	PathReady         = "/ready"
-	PathMetrics       = "/metrics"
 	PathDocumentation = "/docs"
 )
 

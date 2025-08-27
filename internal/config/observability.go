@@ -3,14 +3,11 @@ package config
 import (
 	"fmt"
 	"strings"
-
-	"github.com/leslieo2/go-spec-mock/internal/constants"
 )
 
 // ObservabilityConfig contains observability-related configuration
 type ObservabilityConfig struct {
 	Logging LoggingConfig `json:"logging" yaml:"logging"`
-	Metrics MetricsConfig `json:"metrics" yaml:"metrics"`
 }
 
 // LoggingConfig contains logging configuration
@@ -21,18 +18,10 @@ type LoggingConfig struct {
 	Development bool   `json:"development" yaml:"development"`
 }
 
-// MetricsConfig contains metrics configuration
-type MetricsConfig struct {
-	Enabled bool   `json:"enabled" yaml:"enabled"`
-	Port    string `json:"port" yaml:"port"`
-	Path    string `json:"path" yaml:"path"`
-}
-
 // DefaultObservabilityConfig returns default observability configuration
 func DefaultObservabilityConfig() ObservabilityConfig {
 	return ObservabilityConfig{
 		Logging: DefaultLoggingConfig(),
-		Metrics: DefaultMetricsConfig(),
 	}
 }
 
@@ -46,22 +35,10 @@ func DefaultLoggingConfig() LoggingConfig {
 	}
 }
 
-// DefaultMetricsConfig returns default metrics configuration
-func DefaultMetricsConfig() MetricsConfig {
-	return MetricsConfig{
-		Enabled: true,
-		Port:    "9090",
-		Path:    constants.PathMetrics,
-	}
-}
-
 // Validate validates the observability configuration
 func (o *ObservabilityConfig) Validate() error {
 	if err := o.Logging.Validate(); err != nil {
 		return fmt.Errorf("logging: %w", err)
-	}
-	if err := o.Metrics.Validate(); err != nil {
-		return fmt.Errorf("metrics: %w", err)
 	}
 	return nil
 }
@@ -84,22 +61,6 @@ func (l *LoggingConfig) Validate() error {
 
 	if l.Output == "" {
 		return fmt.Errorf("output cannot be empty")
-	}
-	return nil
-}
-
-// Validate validates the metrics configuration
-func (m *MetricsConfig) Validate() error {
-	if m.Enabled {
-		if m.Path == "" {
-			return fmt.Errorf("path cannot be empty when metrics are enabled")
-		}
-		if !strings.HasPrefix(m.Path, "/") {
-			return fmt.Errorf("path must start with /")
-		}
-		if m.Port == "" {
-			return fmt.Errorf("port cannot be empty when metrics are enabled")
-		}
 	}
 	return nil
 }

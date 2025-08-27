@@ -23,9 +23,9 @@
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
 *   **🔥 Hot Reload:** Automatically reloads OpenAPI specifications and configuration files without server restart for rapid development.
 *   **🔒 Secure Mocking:** Full HTTPS/TLS support for testing secure clients and mimicking production environments.
-*   **🛡️ Enterprise Security:** Comprehensive security suite with API key authentication, rate limiting, CORS, security headers, and role-based access control.
+*   **🛡️ Enterprise Security:** Comprehensive security suite with rate limiting and CORS.
 *   **🔄 Smart Proxy:** Automatically forwards requests for undefined endpoints to a real backend server, enabling hybrid mocking with configurable timeouts.
-*   **📊 Full Observability:** Built-in Prometheus metrics, structured JSON logging, and health/readiness endpoints.
+*   **📊 Full Observability:** Structured JSON logging, and health/readiness endpoints.
 *   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
 *   **🔧 Developer-Friendly:** Simple CLI with comprehensive flags, seamless integration with tools like [Insomnia](https://insomnia.rest/), and extensive development tooling.
 *   **🏢 Production-Ready:** Enterprise-grade architecture with comprehensive testing, Docker support, and configuration management.
@@ -319,15 +319,11 @@ The server provides built-in observability endpoints:
 | `/docs`    | API documentation with available endpoints |
 | `/health`  | Health check endpoint with service status |
 | `/ready`   | Readiness probe for load balancers |
-| `/metrics` | Prometheus metrics endpoint (on metrics port) |
 
 **Usage examples:**
 ```bash
 # Check health status
 curl http://localhost:8080/health
-
-# View Prometheus metrics (assuming default port 9090)
-curl http://localhost:9090/metrics
 ```
 
 ## 🐳 Docker Usage
@@ -346,7 +342,6 @@ docker run -p 8080:8080 -p 9090:9090 \
 # 3. Run with configuration via environment variables
 docker run -p 8081:8081 -p 9091:9091 \
   -e GO_SPEC_MOCK_PORT=8081 \
-  -e GO_SPEC_MOCK_METRICS_PORT=9091 \
   -v $(pwd)/examples/petstore.yaml:/app/petstore.yaml \
   go-spec-mock:latest --spec-file /app/petstore.yaml
 ```
@@ -412,7 +407,7 @@ This project uses a `Makefile` to streamline common development tasks.
 │   ├── server/                   # HTTP server and routing logic
 │   │   └── middleware/           # HTTP middleware chain (CORS, security, logging, proxy)
 │   ├── security/                 # Rate limiting and CORS
-│   ├── observability/            # Logging, metrics, and health checks
+│   ├── observability/            # Logging, and health checks
 │   ├── hotreload/                # Hot reload functionality for specs and config
 │   ├── proxy/                    # Proxy functionality for undefined endpoints
 ├── Dockerfile                    # Multi-stage Docker build
@@ -449,7 +444,6 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 
 #### 📊 Observability
 - [x] Structured (JSON) logging
-- [x] Prometheus metrics endpoint (`/metrics`)
 - [x] Health check endpoint (`/health`)
 - [x] Readiness probe (`/ready`)
 

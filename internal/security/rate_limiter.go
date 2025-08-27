@@ -275,7 +275,6 @@ func (rl *RateLimiter) shouldSkipRateLimit(path string) bool {
 	skippedPaths := []string{
 		constants.PathHealth,
 		constants.PathReady,
-		constants.PathMetrics,
 	}
 
 	for _, skipped := range skippedPaths {

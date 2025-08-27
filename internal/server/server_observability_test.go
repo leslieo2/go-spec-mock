@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -24,11 +23,6 @@ func TestServer_ObservabilityEndpoints(t *testing.T) {
 		Security: config.DefaultSecurityConfig(),
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
-			Metrics: config.MetricsConfig{
-				Enabled: true,
-				Port:    "9090",
-				Path:    "/metrics",
-			},
 		},
 	}
 	server, err := New(cfg)
@@ -55,12 +49,6 @@ func TestServer_ObservabilityEndpoints(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			contentType:    "application/json",
 		},
-		{
-			name:           "metrics endpoint",
-			endpoint:       "/metrics",
-			expectedStatus: http.StatusOK,
-			contentType:    "text/plain; version=0.0.4; charset=utf-8",
-		},
 	}
 
 	for _, tt := range tests {
@@ -74,8 +62,6 @@ func TestServer_ObservabilityEndpoints(t *testing.T) {
 				handler = server.healthHandler
 			case "/ready":
 				handler = server.readinessHandler
-			case "/metrics":
-				handler = server.metricsHandler
 			}
 
 			handler(w, req)
@@ -95,7 +81,6 @@ func TestHealthHandler(t *testing.T) {
 		Security: config.DefaultSecurityConfig(),
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
-			Metrics: config.DefaultMetricsConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -150,7 +135,6 @@ func TestReadinessHandler_Ready(t *testing.T) {
 		Security: config.DefaultSecurityConfig(),
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
-			Metrics: config.DefaultMetricsConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -182,10 +166,10 @@ func TestReadinessHandler_NotReady(t *testing.T) {
 	// Create server with minimal setup to test not-ready state
 	logger, _ := observability.NewLogger(config.DefaultLoggingConfig())
 	server := &Server{
-		routes:    []parser.Route{},
-		parser:    nil,
-		logger:    logger,
-		metrics:   observability.NewMetrics(),
+		routes: []parser.Route{},
+		parser: nil,
+		logger: logger,
+
 		startTime: time.Now(),
 	}
 
@@ -208,42 +192,6 @@ func TestReadinessHandler_NotReady(t *testing.T) {
 	}
 }
 
-func TestMetricsHandler(t *testing.T) {
-	cfg := &config.Config{
-		SpecFile: "../../examples/petstore.yaml",
-		Server:   config.DefaultServerConfig(),
-		Security: config.DefaultSecurityConfig(),
-		Observability: config.ObservabilityConfig{
-			Logging: config.DefaultLoggingConfig(),
-			Metrics: config.DefaultMetricsConfig(),
-		},
-	}
-	server, err := New(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
-	defer func() { _ = server.logger.Sync() }()
-
-	req := httptest.NewRequest("GET", "/metrics", nil)
-	w := httptest.NewRecorder()
-
-	server.metricsHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
-	}
-
-	contentType := w.Header().Get("Content-Type")
-	if !strings.Contains(contentType, "text/plain") {
-		t.Errorf("Expected Content-Type to contain 'text/plain', got '%s'", contentType)
-	}
-
-	body := w.Body.String()
-	if body == "" {
-		t.Error("Expected metrics body to contain data")
-	}
-}
-
 func TestDocumentationHandler(t *testing.T) {
 	cfg := &config.Config{
 		SpecFile: "../../examples/petstore.yaml",
@@ -251,7 +199,6 @@ func TestDocumentationHandler(t *testing.T) {
 		Security: config.DefaultSecurityConfig(),
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
-			Metrics: config.DefaultMetricsConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -279,7 +226,6 @@ func TestDocumentationHandler(t *testing.T) {
 		} `json:"endpoints"`
 		Observability struct {
 			Health    string `json:"health"`
-			Metrics   string `json:"metrics"`
 			Readiness string `json:"readiness"`
 		} `json:"observability"`
 	}
@@ -304,42 +250,8 @@ func TestDocumentationHandler(t *testing.T) {
 		t.Errorf("Expected health endpoint '/health', got '%s'", doc.Observability.Health)
 	}
 
-	if doc.Observability.Metrics != "/metrics" {
-		t.Errorf("Expected metrics endpoint '/metrics', got '%s'", doc.Observability.Metrics)
-	}
-
 	if doc.Observability.Readiness != "/ready" {
 		t.Errorf("Expected readiness endpoint '/ready', got '%s'", doc.Observability.Readiness)
-	}
-}
-
-func TestServer_MetricsCollection(t *testing.T) {
-	cfg := &config.Config{
-		SpecFile: "../../examples/petstore.yaml",
-		Server:   config.DefaultServerConfig(),
-		Security: config.DefaultSecurityConfig(),
-		Observability: config.ObservabilityConfig{
-			Logging: config.DefaultLoggingConfig(),
-			Metrics: config.DefaultMetricsConfig(),
-		},
-	}
-	server, err := New(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
-	defer func() { _ = server.logger.Sync() }()
-
-	// Verify metrics collection is initialized
-	// Note: Actual metrics collection testing would require integration tests
-
-	// This test verifies that metrics collection is initialized
-	// Actual metrics collection would require integration testing
-	if server.metrics == nil {
-		t.Error("Expected metrics to be initialized")
-	}
-
-	if server.logger == nil {
-		t.Error("Expected logger to be initialized")
 	}
 }
 
@@ -350,7 +262,6 @@ func TestServer_ObservabilityIntegration(t *testing.T) {
 		Security: config.DefaultSecurityConfig(),
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
-			Metrics: config.DefaultMetricsConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -363,13 +274,6 @@ func TestServer_ObservabilityIntegration(t *testing.T) {
 	if server.logger == nil {
 		t.Error("Logger is not initialized")
 	}
-
-	if server.metrics == nil {
-		t.Error("Metrics is not initialized")
-	}
-
-	// Test that health status is properly set
-	server.metrics.SetHealthStatus(true)
 
 	// Test start time is set
 	if server.startTime.IsZero() {

@@ -61,7 +61,6 @@ type Server struct {
 
 	// Observability
 	logger    *observability.Logger
-	metrics   *observability.Metrics
 	startTime time.Time
 
 	// Proxy
@@ -78,11 +77,6 @@ func New(cfg *config.Config) (*Server, error) {
 	logger, err := observability.NewLogger(cfg.Observability.Logging)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %w", err)
-	}
-
-	metrics := observability.NewMetrics()
-	if err := metrics.Register(); err != nil {
-		return nil, fmt.Errorf("failed to register metrics: %w", err)
 	}
 
 	// Initialize security
@@ -103,8 +97,8 @@ func New(cfg *config.Config) (*Server, error) {
 		routeMap:    routeMap,
 		rateLimiter: rateLimiter,
 		logger:      logger,
-		metrics:     metrics,
-		startTime:   time.Now(),
+
+		startTime: time.Now(),
 	}, nil
 }
 
@@ -114,7 +108,6 @@ func (s *Server) buildHandler() http.Handler {
 
 	// Add observability endpoints
 	mux.HandleFunc(constants.PathHealth, s.healthHandler)
-	mux.HandleFunc(constants.PathMetrics, s.metricsHandler)
 	mux.HandleFunc(constants.PathReady, s.readinessHandler)
 
 	// Register OpenAPI routes first with proper synchronization
@@ -174,28 +167,6 @@ func (s *Server) Start() error {
 		zap.Int("routes", len(s.routes)),
 	)
 
-	s.metrics.SetHealthStatus(true)
-
-	// Start metrics server in background
-	var metricsServer *http.Server
-	if s.metrics != nil {
-		metricsMux := http.NewServeMux()
-		metricsMux.Handle(constants.PathMetrics, s.metrics.Handler())
-		metricsServer = &http.Server{
-			Addr:              fmt.Sprintf(":%s", s.config.Server.MetricsPort),
-			Handler:           metricsMux,
-			ReadHeaderTimeout: 5 * time.Second,
-		}
-		s.logger.Logger.Info("Starting metrics server",
-			zap.String("port", s.config.Server.MetricsPort),
-		)
-		go func() {
-			if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				s.logger.Logger.Error("Metrics server failed", zap.Error(err))
-			}
-		}()
-	}
-
 	go func() {
 		var err error
 		if s.config.TLS.Enabled {
@@ -222,49 +193,17 @@ func (s *Server) Start() error {
 	<-quit
 
 	s.logger.Logger.Info("Shutting down server...")
-	s.metrics.SetHealthStatus(false)
 
-	// Graceful shutdown with parallel server shutdown
+	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), constants.ServerShutdownTimeout)
 	defer cancel()
 
-	var wg sync.WaitGroup
-	errChan := make(chan error, 2)
-
-	// Shutdown metrics server in parallel
-	if metricsServer != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			s.logger.Logger.Info("Shutting down metrics server...")
-			if err := metricsServer.Shutdown(ctx); err != nil {
-				s.logger.Logger.Error("Failed to shutdown metrics server", zap.Error(err))
-				errChan <- fmt.Errorf("metrics server shutdown: %w", err)
-			}
-		}()
+	s.logger.Logger.Info("Shutting down main server...")
+	if err := s.server.Shutdown(ctx); err != nil {
+		s.logger.Logger.Error("Failed to shutdown main server", zap.Error(err))
+		return fmt.Errorf("main server shutdown: %w", err)
 	}
 
-	// Shutdown main server in parallel
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		s.logger.Logger.Info("Shutting down main server...")
-		if err := s.server.Shutdown(ctx); err != nil {
-			s.logger.Logger.Error("Failed to shutdown main server", zap.Error(err))
-			errChan <- fmt.Errorf("main server shutdown: %w", err)
-		}
-	}()
-
-	// Wait for both shutdowns to complete
-	wg.Wait()
-	close(errChan)
-
-	// Return the first error encountered, if any
-	for err := range errChan {
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -298,7 +237,6 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 		matchedRoute, exists := routeLookup[r.Method]
 		if !exists {
 			s.sendMethodNotAllowedResponse(w, methods, r.Method)
-			s.metrics.RecordRequest(r.Method, path, http.StatusMethodNotAllowed, time.Since(start), requestSize, 0)
 			s.logger.Logger.Warn("Method not allowed",
 				zap.String("method", r.Method),
 				zap.String("path", path),
@@ -313,7 +251,6 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 		// Try to get from cache
 		if cached, ok := s.getCachedResponse(cacheKey); ok {
 			s.sendJSONResponse(w, cached.StatusCode, cached.Body)
-			s.metrics.RecordRequest(r.Method, path, cached.StatusCode, time.Since(start), requestSize, int64(len(cached.Body)))
 			s.logger.Logger.Debug("Served from cache",
 				zap.String("method", r.Method),
 				zap.String("path", path),
@@ -328,14 +265,14 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 		if err != nil {
 			if strings.Contains(err.Error(), "no example found") {
 				s.sendErrorResponse(w, http.StatusNotFound, err.Error())
-				s.metrics.RecordRequest(r.Method, path, http.StatusNotFound, time.Since(start), requestSize, 0)
+
 				s.logger.Logger.Warn("No example found",
 					zap.String("status_code", statusCode),
 					zap.String("path", path),
 				)
 			} else {
 				s.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
-				s.metrics.RecordRequest(r.Method, path, http.StatusInternalServerError, time.Since(start), requestSize, 0)
+
 				s.logger.Logger.Error("Failed to serialize response",
 					zap.Error(err),
 					zap.String("path", path),
@@ -351,7 +288,6 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 
 		// Send response
 		s.sendJSONResponse(w, status, buf)
-		s.metrics.RecordRequest(r.Method, path, status, time.Since(start), requestSize, responseSize)
 		s.logger.Logger.Debug("Request processed",
 			zap.String("method", r.Method),
 			zap.String("path", path),

@@ -198,7 +198,6 @@ curl-test: build
 	curl -s http://localhost:8085/ | jq -r '.message // .'; \
 	curl -s http://localhost:8085/health | jq -r '.status // .'; \
 	curl -s http://localhost:8085/ready | jq -r '.status // .'; \
-	curl -s --max-time 5 http://localhost:8085/metrics | head -5; \
 	curl -s http://localhost:8085/pets | jq -r '.[0].name // .[0].Name // empty'; \
 	curl -s http://localhost:8085/pets/123 | jq -r '.name // .Name // empty'; \
 	curl -s "http://localhost:8085/pets/123?__statusCode=404" | jq -r '.error // .Error // empty'; \
@@ -214,7 +213,6 @@ curl-interactive: build
 	@echo "  curl http://localhost:8080/"
 	@echo "  curl http://localhost:8080/health"
 	@echo "  curl http://localhost:8080/ready"
-	@echo "  curl http://localhost:8080/metrics"
 	@echo "  curl http://localhost:8080/pets"
 	@echo "  curl http://localhost:8080/pets/123"
 	@echo "  curl 'http://localhost:8080/pets/123?__statusCode=404'"

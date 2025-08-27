@@ -116,6 +116,20 @@ const (
 	RateLimitMaxCacheSize = 10000
 )
 
+// Server timeout constants (internal use only - not user configurable)
+const (
+	// ServerReadTimeout is the read timeout for the HTTP server
+	ServerReadTimeout = 15 * time.Second
+	// ServerWriteTimeout is the write timeout for the HTTP server
+	ServerWriteTimeout = 15 * time.Second
+	// ServerIdleTimeout is the idle timeout for the HTTP server
+	ServerIdleTimeout = 60 * time.Second
+	// ServerMaxRequestSize is the maximum request body size (10MB)
+	ServerMaxRequestSize = 10 * 1024 * 1024
+	// ServerShutdownTimeout is the graceful shutdown timeout
+	ServerShutdownTimeout = 30 * time.Second
+)
+
 // Context key types
 
 // Context key constants

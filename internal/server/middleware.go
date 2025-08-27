@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/server/middleware"
 )
 
@@ -42,7 +43,7 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	}
 
 	// Request size limit middleware
-	handler = middleware.RequestSizeLimitMiddleware(s.config.Server.MaxRequestSize)(handler)
+	handler = middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize)(handler)
 
 	// Logging middleware
 	handler = middleware.LoggingMiddleware(s.logger.Logger)(handler)

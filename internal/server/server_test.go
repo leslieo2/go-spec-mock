@@ -237,9 +237,6 @@ func TestApplyMiddleware(t *testing.T) {
 					Enabled: true,
 				},
 			},
-			Server: config.ServerConfig{
-				MaxRequestSize: 1024,
-			},
 		},
 		logger: &observability.Logger{Logger: zap.NewNop()},
 	}

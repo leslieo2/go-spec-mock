@@ -18,13 +18,8 @@ func TestServer_ObservabilityEndpoints(t *testing.T) {
 	cfg := &config.Config{
 		SpecFile: "../../examples/petstore.yaml",
 		Server: config.ServerConfig{
-			Host:            "localhost",
-			Port:            "8080",
-			ReadTimeout:     15 * time.Second,
-			WriteTimeout:    15 * time.Second,
-			IdleTimeout:     60 * time.Second,
-			ShutdownTimeout: 30 * time.Second,
-			MaxRequestSize:  10 * 1024 * 1024,
+			Host: "localhost",
+			Port: "8080",
 		},
 		Security: config.DefaultSecurityConfig(),
 		Observability: config.ObservabilityConfig{

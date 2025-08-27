@@ -281,11 +281,6 @@ func Test_loadFromEnv_Integration(t *testing.T) {
 				cfg.Server.Host = "127.0.0.1"
 				cfg.Server.Port = "9000"
 				cfg.Server.MetricsPort = "9001"
-				cfg.Server.ReadTimeout = 10 * time.Second
-				cfg.Server.WriteTimeout = 20 * time.Second
-				cfg.Server.IdleTimeout = 30 * time.Second
-				cfg.Server.MaxRequestSize = 1048576
-				cfg.Server.ShutdownTimeout = 5 * time.Second
 				cfg.SpecFile = "env_spec.yaml"
 				return cfg
 			}(),
@@ -332,9 +327,6 @@ func Test_loadFromEnv_Integration(t *testing.T) {
 			}
 			if cfg.Server.Port != tt.expectedCfg.Server.Port {
 				t.Errorf("Port: got %s, want %s", cfg.Server.Port, tt.expectedCfg.Server.Port)
-			}
-			if cfg.Server.ReadTimeout != tt.expectedCfg.Server.ReadTimeout {
-				t.Errorf("ReadTimeout: got %v, want %v", cfg.Server.ReadTimeout, tt.expectedCfg.Server.ReadTimeout)
 			}
 			if cfg.SpecFile != tt.expectedCfg.SpecFile {
 				t.Errorf("SpecFile: got %s, want %s", cfg.SpecFile, tt.expectedCfg.SpecFile)
@@ -437,9 +429,6 @@ func Test_overrideWithCLI(t *testing.T) {
 			if cfg.Server.Port != tt.expectedCfg.Server.Port {
 				t.Errorf("Port: got %s, want %s", cfg.Server.Port, tt.expectedCfg.Server.Port)
 			}
-			if cfg.Server.ReadTimeout != tt.expectedCfg.Server.ReadTimeout {
-				t.Errorf("ReadTimeout: got %v, want %v", cfg.Server.ReadTimeout, tt.expectedCfg.Server.ReadTimeout)
-			}
 			if cfg.Security.Auth.Enabled != tt.expectedCfg.Security.Auth.Enabled {
 				t.Errorf("AuthEnabled: got %v, want %v", cfg.Security.Auth.Enabled, tt.expectedCfg.Security.Auth.Enabled)
 			}
@@ -483,12 +472,8 @@ func Test_mergeConfig(t *testing.T) {
 		{
 			name:    "Merge ReadTimeout",
 			baseCfg: DefaultConfig(),
-			fileCfg: &Config{
-				Server: ServerConfig{ReadTimeout: 15 * time.Second},
-			},
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
-				cfg.Server.ReadTimeout = 15 * time.Second
 				return cfg
 			}(),
 		},
@@ -536,15 +521,13 @@ func Test_mergeConfig(t *testing.T) {
 			name: "File config has zero duration (should not merge)",
 			baseCfg: func() *Config {
 				cfg := DefaultConfig()
-				cfg.Server.ReadTimeout = 10 * time.Second
+
 				return cfg
 			}(),
-			fileCfg: &Config{
-				Server: ServerConfig{ReadTimeout: 0}, // Zero duration should not override
-			},
+
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
-				cfg.Server.ReadTimeout = 10 * time.Second
+
 				return cfg
 			}(),
 		},
@@ -557,9 +540,6 @@ func Test_mergeConfig(t *testing.T) {
 			// Deep compare relevant fields
 			if tt.baseCfg.Server.Port != tt.expectedCfg.Server.Port {
 				t.Errorf("Port: got %s, want %s", tt.baseCfg.Server.Port, tt.expectedCfg.Server.Port)
-			}
-			if tt.baseCfg.Server.ReadTimeout != tt.expectedCfg.Server.ReadTimeout {
-				t.Errorf("ReadTimeout: got %v, want %v", tt.baseCfg.Server.ReadTimeout, tt.expectedCfg.Server.ReadTimeout)
 			}
 			if tt.baseCfg.Security.Auth.Enabled != tt.expectedCfg.Security.Auth.Enabled {
 				t.Errorf("AuthEnabled: got %v, want %v", tt.baseCfg.Security.Auth.Enabled, tt.expectedCfg.Security.Auth.Enabled)

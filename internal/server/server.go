@@ -165,9 +165,9 @@ func (s *Server) Start() error {
 	s.server = &http.Server{
 		Addr:           fmt.Sprintf("%s:%s", s.config.Server.Host, s.config.Server.Port),
 		Handler:        handler,
-		ReadTimeout:    s.config.Server.ReadTimeout,
-		WriteTimeout:   s.config.Server.WriteTimeout,
-		IdleTimeout:    s.config.Server.IdleTimeout,
+		ReadTimeout:    constants.ServerReadTimeout,
+		WriteTimeout:   constants.ServerWriteTimeout,
+		IdleTimeout:    constants.ServerIdleTimeout,
 		MaxHeaderBytes: 1 << 20, // 1MB max header size
 	}
 
@@ -228,7 +228,7 @@ func (s *Server) Start() error {
 	s.metrics.SetHealthStatus(false)
 
 	// Graceful shutdown with parallel server shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), s.config.Server.ShutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.ServerShutdownTimeout)
 	defer cancel()
 
 	var wg sync.WaitGroup

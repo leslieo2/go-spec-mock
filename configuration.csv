@@ -7,11 +7,6 @@ Config Field (Go Struct Path),YAML/JSON Key,CLI Flag,Environment Variable,Defaul
 `Config.Server.Host`,`server.host`,`--host`,`GO_SPEC_MOCK_HOST`,`localhost`,Host to run the mock server on.
 `Config.Server.Port`,`server.port`,`--port`,`GO_SPEC_MOCK_PORT`,`8080`,Port to run the mock server on.
 `Config.Server.MetricsPort`,`server.metrics_port`,`--metrics-port`,`GO_SPEC_MOCK_METRICS_PORT`,`9090`,Port to run the metrics server on.
-`Config.Server.ReadTimeout`,`server.read_timeout`,N/A,`GO_SPEC_MOCK_READ_TIMEOUT`,`15s`,Read timeout for the server.
-`Config.Server.WriteTimeout`,`server.write_timeout`,N/A,`GO_SPEC_MOCK_WRITE_TIMEOUT`,`15s`,Write timeout for the server.
-`Config.Server.IdleTimeout`,`server.idle_timeout`,N/A,`GO_SPEC_MOCK_IDLE_TIMEOUT`,`60s`,Idle timeout for the server.
-`Config.Server.MaxRequestSize`,`server.max_request_size`,N/A,`GO_SPEC_MOCK_MAX_REQUEST_SIZE`,`10485760` (10MB),Maximum request body size.
-`Config.Server.ShutdownTimeout`,`server.shutdown_timeout`,N/A,`GO_SPEC_MOCK_SHUTDOWN_TIMEOUT`,`30s`,Shutdown timeout for the server.
 
 Config Field (Go Struct Path),YAML/JSON Key,CLI Flag,Environment Variable,Default Value,Description
 

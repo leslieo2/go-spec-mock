@@ -2,7 +2,6 @@ package config
 
 import (
 	"testing"
-	"time"
 )
 
 func TestDefaultServerConfig(t *testing.T) {
@@ -17,21 +16,7 @@ func TestDefaultServerConfig(t *testing.T) {
 	if cfg.MetricsPort != "9090" {
 		t.Errorf("DefaultServerConfig MetricsPort got %s, want 9090", cfg.MetricsPort)
 	}
-	if cfg.ReadTimeout != 15*time.Second {
-		t.Errorf("DefaultServerConfig ReadTimeout got %v, want 15s", cfg.ReadTimeout)
-	}
-	if cfg.WriteTimeout != 15*time.Second {
-		t.Errorf("DefaultServerConfig WriteTimeout got %v, want 15s", cfg.WriteTimeout)
-	}
-	if cfg.IdleTimeout != 60*time.Second {
-		t.Errorf("DefaultServerConfig IdleTimeout got %v, want 60s", cfg.IdleTimeout)
-	}
-	if cfg.MaxRequestSize != 10*1024*1024 {
-		t.Errorf("DefaultServerConfig MaxRequestSize got %d, want 10MB", cfg.MaxRequestSize)
-	}
-	if cfg.ShutdownTimeout != 30*time.Second {
-		t.Errorf("DefaultServerConfig ShutdownTimeout got %v, want 30s", cfg.ShutdownTimeout)
-	}
+
 }
 
 func TestServerConfig_Validate(t *testing.T) {
@@ -48,126 +33,81 @@ func TestServerConfig_Validate(t *testing.T) {
 		{
 			name: "Empty Host",
 			config: ServerConfig{
-				Host:            "",
-				Port:            "8080",
-				MetricsPort:     "9090",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "",
+				Port:        "8080",
+				MetricsPort: "9090",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid Port",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "invalid",
-				MetricsPort:     "9090",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "localhost",
+				Port:        "invalid",
+				MetricsPort: "9090",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid Metrics Port",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "8080",
-				MetricsPort:     "invalid",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "localhost",
+				Port:        "8080",
+				MetricsPort: "invalid",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Zero ReadTimeout",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "8080",
-				MetricsPort:     "9090",
-				ReadTimeout:     0,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "localhost",
+				Port:        "8080",
+				MetricsPort: "9090",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Zero WriteTimeout",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "8080",
-				MetricsPort:     "9090",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    0,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "localhost",
+				Port:        "8080",
+				MetricsPort: "9090",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Zero IdleTimeout",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "8080",
-				MetricsPort:     "9090",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     0,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "localhost",
+				Port:        "8080",
+				MetricsPort: "9090",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Zero MaxRequestSize",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "8080",
-				MetricsPort:     "9090",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  0,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "localhost",
+				Port:        "8080",
+				MetricsPort: "9090",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Zero ShutdownTimeout",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "8080",
-				MetricsPort:     "9090",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 0,
+				Host:        "localhost",
+				Port:        "8080",
+				MetricsPort: "9090",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Port and MetricsPort are the same",
 			config: ServerConfig{
-				Host:            "localhost",
-				Port:            "8080",
-				MetricsPort:     "8080",
-				ReadTimeout:     15 * time.Second,
-				WriteTimeout:    15 * time.Second,
-				IdleTimeout:     60 * time.Second,
-				MaxRequestSize:  10 * 1024 * 1024,
-				ShutdownTimeout: 30 * time.Second,
+				Host:        "localhost",
+				Port:        "8080",
+				MetricsPort: "8080",
 			},
 			wantErr: true,
 		},

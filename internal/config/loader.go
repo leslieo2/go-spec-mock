@@ -299,9 +299,6 @@ func mergeConfig(base *Config, file *Config) {
 	if file.Observability.Metrics.Path != "" {
 		base.Observability.Metrics.Path = file.Observability.Metrics.Path
 	}
-	if file.Observability.Tracing.Enabled != base.Observability.Tracing.Enabled {
-		base.Observability.Tracing = file.Observability.Tracing
-	}
 
 	if file.SpecFile != "" {
 		base.SpecFile = file.SpecFile

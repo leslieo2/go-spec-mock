@@ -64,8 +64,6 @@ observability:
   metrics:
     enabled: true
     path: "/metrics"
-  tracing:
-    enabled: false
 
 # Hot Reload Configuration
 hot_reload:

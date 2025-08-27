@@ -25,7 +25,7 @@
 *   **🔒 Secure Mocking:** Full HTTPS/TLS support for testing secure clients and mimicking production environments.
 *   **🛡️ Enterprise Security:** Comprehensive security suite with API key authentication, rate limiting, CORS, security headers, and role-based access control.
 *   **🔄 Smart Proxy:** Automatically forwards requests for undefined endpoints to a real backend server, enabling hybrid mocking with configurable timeouts.
-*   **📊 Full Observability:** Built-in Prometheus metrics, structured JSON logging, OpenTelemetry tracing, and health/readiness endpoints.
+*   **📊 Full Observability:** Built-in Prometheus metrics, structured JSON logging, and health/readiness endpoints.
 *   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
 *   **🔧 Developer-Friendly:** Simple CLI with comprehensive flags, seamless integration with tools like [Insomnia](https://insomnia.rest/), and extensive development tooling.
 *   **🏢 Production-Ready:** Enterprise-grade architecture with comprehensive testing, Docker support, and configuration management.
@@ -444,7 +444,7 @@ This project uses a `Makefile` to streamline common development tasks.
 │   ├── server/                   # HTTP server and routing logic
 │   │   └── middleware/           # HTTP middleware chain (CORS, security, logging, proxy)
 │   ├── security/                 # Authentication and rate limiting
-│   ├── observability/            # Logging, metrics, tracing, and health checks
+│   ├── observability/            # Logging, metrics, and health checks
 │   ├── hotreload/                # Hot reload functionality for specs and config
 │   ├── proxy/                    # Proxy functionality for undefined endpoints
 ├── Dockerfile                    # Multi-stage Docker build
@@ -483,7 +483,6 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 #### 📊 Observability
 - [x] Structured (JSON) logging
 - [x] Prometheus metrics endpoint (`/metrics`)
-- [x] Distributed tracing support (OpenTelemetry)
 - [x] Health check endpoint (`/health`)
 - [x] Readiness probe (`/ready`)
 
@@ -512,7 +511,6 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 #### 🔥 **Core Enterprise Priorities**
 - [ ] **Smart Proxy Routing** - Spec-based intelligent matching for proxy requests
 - [ ] **JWT/OAuth 2.0 Integration** - Modern enterprise security standards
-- [ ] **OpenTelemetry Distributed Tracing** - Production debugging and monitoring
 - [ ] **WebSocket Protocol Mocking** - Real-time API support
 
 #### ⚡ **Enhanced Proxy & Security**

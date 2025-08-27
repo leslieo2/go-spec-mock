@@ -65,8 +65,6 @@ observability:
   metrics:
     enabled: true
     path: "/metrics"
-  tracing:
-    enabled: true
 
 spec_file: "./examples/petstore.yaml"
 

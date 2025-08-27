@@ -12,8 +12,6 @@ import (
 
 // HealthHandler handles health check requests
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
-	_, span := s.tracer.StartSpan(r.Context(), "health_check")
-	defer span.End()
 
 	uptime := time.Since(s.startTime)
 	health := observability.HealthStatus{
@@ -39,8 +37,6 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 
 // ReadinessHandler handles readiness check requests
 func (s *Server) readinessHandler(w http.ResponseWriter, r *http.Request) {
-	_, span := s.tracer.StartSpan(r.Context(), "readiness_check")
-	defer span.End()
 
 	ready := len(s.routes) > 0 && s.parser != nil
 
@@ -65,8 +61,6 @@ func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
 
 // DocumentationHandler serves API documentation
 func (s *Server) serveDocumentation(w http.ResponseWriter, r *http.Request) {
-	_, span := s.tracer.StartSpan(r.Context(), "documentation")
-	defer span.End()
 
 	type RouteInfo struct {
 		Method      string `json:"method"`

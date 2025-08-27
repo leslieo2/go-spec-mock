@@ -225,8 +225,6 @@ observability:
   metrics:
     enabled: true
     path: "/metrics"
-  tracing:
-    enabled: false
 
 hot_reload:
   enabled: true

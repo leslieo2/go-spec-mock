@@ -11,7 +11,6 @@ import (
 type ObservabilityConfig struct {
 	Logging LoggingConfig `json:"logging" yaml:"logging"`
 	Metrics MetricsConfig `json:"metrics" yaml:"metrics"`
-	Tracing TracingConfig `json:"tracing" yaml:"tracing"`
 }
 
 // LoggingConfig contains logging configuration
@@ -29,21 +28,11 @@ type MetricsConfig struct {
 	Path    string `json:"path" yaml:"path"`
 }
 
-// TracingConfig contains tracing configuration
-type TracingConfig struct {
-	Enabled     bool   `json:"enabled" yaml:"enabled"`
-	Exporter    string `json:"exporter" yaml:"exporter"`
-	ServiceName string `json:"service_name" yaml:"service_name"`
-	Environment string `json:"environment" yaml:"environment"`
-	Version     string `json:"version" yaml:"version"`
-}
-
 // DefaultObservabilityConfig returns default observability configuration
 func DefaultObservabilityConfig() ObservabilityConfig {
 	return ObservabilityConfig{
 		Logging: DefaultLoggingConfig(),
 		Metrics: DefaultMetricsConfig(),
-		Tracing: DefaultTracingConfig(),
 	}
 }
 
@@ -66,17 +55,6 @@ func DefaultMetricsConfig() MetricsConfig {
 	}
 }
 
-// DefaultTracingConfig returns default tracing configuration
-func DefaultTracingConfig() TracingConfig {
-	return TracingConfig{
-		Enabled:     false,
-		Exporter:    "stdout",
-		ServiceName: "go-spec-mock",
-		Environment: "production",
-		Version:     "1.0.0",
-	}
-}
-
 // Validate validates the observability configuration
 func (o *ObservabilityConfig) Validate() error {
 	if err := o.Logging.Validate(); err != nil {
@@ -84,9 +62,6 @@ func (o *ObservabilityConfig) Validate() error {
 	}
 	if err := o.Metrics.Validate(); err != nil {
 		return fmt.Errorf("metrics: %w", err)
-	}
-	if err := o.Tracing.Validate(); err != nil {
-		return fmt.Errorf("tracing: %w", err)
 	}
 	return nil
 }
@@ -124,19 +99,6 @@ func (m *MetricsConfig) Validate() error {
 		}
 		if m.Port == "" {
 			return fmt.Errorf("port cannot be empty when metrics are enabled")
-		}
-	}
-	return nil
-}
-
-// Validate validates the tracing configuration
-func (t *TracingConfig) Validate() error {
-	if t.Enabled {
-		if t.ServiceName == "" {
-			return fmt.Errorf("service_name cannot be empty when tracing is enabled")
-		}
-		if t.Exporter == "" {
-			return fmt.Errorf("exporter cannot be empty when tracing is enabled")
 		}
 	}
 	return nil

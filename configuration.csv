@@ -48,11 +48,6 @@ Config Field (Go Struct Path),YAML/JSON Key,CLI Flag,Environment Variable,Defaul
 `Config.Observability.Logging.Development`,`observability.logging.development`,N/A,N/A,`false`,Enable development mode for logging.
 `Config.Observability.Metrics.Enabled`,`observability.metrics.enabled`,N/A,N/A,`true`,Enable metrics endpoint.
 `Config.Observability.Metrics.Path`,`observability.metrics.path`,N/A,N/A,`/metrics`,Path for the metrics endpoint.
-`Config.Observability.Tracing.Enabled`,`observability.tracing.enabled`,N/A,N/A,`false`,Enable distributed tracing.
-`Config.Observability.Tracing.Exporter`,`observability.tracing.exporter`,N/A,N/A,`stdout`,"Tracing exporter (`stdout`, `jaeger`, `otlp`)."
-`Config.Observability.Tracing.ServiceName`,`observability.tracing.service_name`,N/A,N/A,`go-spec-mock`,Service name for tracing.
-`Config.Observability.Tracing.Environment`,`observability.tracing.environment`,N/A,N/A,`production`,Environment for tracing.
-`Config.Observability.Tracing.Version`,`observability.tracing.version`,N/A,N/A,`1.0.0`,Version for tracing.
 
 Config Field (Go Struct Path),YAML/JSON Key,CLI Flag,Environment Variable,Default Value,Description
 

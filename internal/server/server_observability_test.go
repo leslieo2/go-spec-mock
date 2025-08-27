@@ -34,7 +34,6 @@ func TestServer_ObservabilityEndpoints(t *testing.T) {
 				Port:    "9090",
 				Path:    "/metrics",
 			},
-			Tracing: config.DefaultTracingConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -102,7 +101,6 @@ func TestHealthHandler(t *testing.T) {
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
 			Metrics: config.DefaultMetricsConfig(),
-			Tracing: config.DefaultTracingConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -158,7 +156,6 @@ func TestReadinessHandler_Ready(t *testing.T) {
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
 			Metrics: config.DefaultMetricsConfig(),
-			Tracing: config.DefaultTracingConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -189,13 +186,11 @@ func TestReadinessHandler_Ready(t *testing.T) {
 func TestReadinessHandler_NotReady(t *testing.T) {
 	// Create server with minimal setup to test not-ready state
 	logger, _ := observability.NewLogger(config.DefaultLoggingConfig())
-	tracer, _ := observability.NewTracer(config.DefaultTracingConfig())
 	server := &Server{
 		routes:    []parser.Route{},
 		parser:    nil,
 		logger:    logger,
 		metrics:   observability.NewMetrics(),
-		tracer:    tracer,
 		startTime: time.Now(),
 	}
 
@@ -226,7 +221,6 @@ func TestMetricsHandler(t *testing.T) {
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
 			Metrics: config.DefaultMetricsConfig(),
-			Tracing: config.DefaultTracingConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -263,7 +257,6 @@ func TestDocumentationHandler(t *testing.T) {
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
 			Metrics: config.DefaultMetricsConfig(),
-			Tracing: config.DefaultTracingConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -333,7 +326,6 @@ func TestServer_MetricsCollection(t *testing.T) {
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
 			Metrics: config.DefaultMetricsConfig(),
-			Tracing: config.DefaultTracingConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -354,10 +346,6 @@ func TestServer_MetricsCollection(t *testing.T) {
 	if server.logger == nil {
 		t.Error("Expected logger to be initialized")
 	}
-
-	if server.tracer == nil {
-		t.Error("Expected tracer to be initialized")
-	}
 }
 
 func TestServer_ObservabilityIntegration(t *testing.T) {
@@ -368,7 +356,6 @@ func TestServer_ObservabilityIntegration(t *testing.T) {
 		Observability: config.ObservabilityConfig{
 			Logging: config.DefaultLoggingConfig(),
 			Metrics: config.DefaultMetricsConfig(),
-			Tracing: config.DefaultTracingConfig(),
 		},
 	}
 	server, err := New(cfg)
@@ -384,10 +371,6 @@ func TestServer_ObservabilityIntegration(t *testing.T) {
 
 	if server.metrics == nil {
 		t.Error("Metrics is not initialized")
-	}
-
-	if server.tracer == nil {
-		t.Error("Tracer is not initialized")
 	}
 
 	// Test that health status is properly set

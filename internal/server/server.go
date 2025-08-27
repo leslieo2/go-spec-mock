@@ -19,7 +19,6 @@ import (
 	"github.com/leslieo2/go-spec-mock/internal/parser"
 	"github.com/leslieo2/go-spec-mock/internal/security"
 	"github.com/leslieo2/go-spec-mock/internal/server/middleware"
-	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 )
 
@@ -64,7 +63,6 @@ type Server struct {
 	// Observability
 	logger    *observability.Logger
 	metrics   *observability.Metrics
-	tracer    *observability.Tracer
 	startTime time.Time
 
 	// Proxy
@@ -86,10 +84,6 @@ func New(cfg *config.Config) (*Server, error) {
 	metrics := observability.NewMetrics()
 	if err := metrics.Register(); err != nil {
 		return nil, fmt.Errorf("failed to register metrics: %w", err)
-	}
-	tracer, err := observability.NewTracer(cfg.Observability.Tracing)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
 	}
 
 	// Initialize security
@@ -113,7 +107,6 @@ func New(cfg *config.Config) (*Server, error) {
 		rateLimiter: rateLimiter,
 		logger:      logger,
 		metrics:     metrics,
-		tracer:      tracer,
 		startTime:   time.Now(),
 	}, nil
 }
@@ -297,13 +290,6 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-
-		_, span := s.tracer.StartSpan(r.Context(), "handle_request",
-			attribute.String("http.method", r.Method),
-			attribute.String("http.path", path),
-			attribute.String("http.user_agent", r.UserAgent()),
-		)
-		defer span.End()
 
 		// Get request size
 		requestSize := r.ContentLength

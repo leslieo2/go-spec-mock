@@ -13,9 +13,6 @@ func TestDefaultObservabilityConfig(t *testing.T) {
 	if cfg.Metrics.Enabled != true {
 		t.Errorf("DefaultMetricsConfig Enabled got %v, want true", cfg.Metrics.Enabled)
 	}
-	if cfg.Tracing.Enabled != false {
-		t.Errorf("DefaultTracingConfig Enabled got %v, want false", cfg.Tracing.Enabled)
-	}
 }
 
 func TestLoggingConfig_Validate(t *testing.T) {
@@ -127,58 +124,6 @@ func TestMetricsConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestTracingConfig_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  TracingConfig
-		wantErr bool
-	}{
-		{
-			name:    "Valid Tracing Config Disabled",
-			config:  DefaultTracingConfig(),
-			wantErr: false,
-		},
-		{
-			name: "Valid Tracing Config Enabled",
-			config: TracingConfig{
-				Enabled:     true,
-				Exporter:    "jaeger",
-				ServiceName: "my-service",
-				Environment: "dev",
-				Version:     "1.0.0",
-			},
-			wantErr: false,
-		},
-		{
-			name: "Enabled with Empty ServiceName",
-			config: TracingConfig{
-				Enabled:     true,
-				Exporter:    "jaeger",
-				ServiceName: "",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Enabled with Empty Exporter",
-			config: TracingConfig{
-				Enabled:     true,
-				Exporter:    "",
-				ServiceName: "my-service",
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TracingConfig.Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestObservabilityConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -195,7 +140,6 @@ func TestObservabilityConfig_Validate(t *testing.T) {
 			config: ObservabilityConfig{
 				Logging: LoggingConfig{Level: "bad"},
 				Metrics: DefaultMetricsConfig(),
-				Tracing: DefaultTracingConfig(),
 			},
 			wantErr: true,
 		},
@@ -204,16 +148,6 @@ func TestObservabilityConfig_Validate(t *testing.T) {
 			config: ObservabilityConfig{
 				Logging: DefaultLoggingConfig(),
 				Metrics: MetricsConfig{Enabled: true, Path: ""},
-				Tracing: DefaultTracingConfig(),
-			},
-			wantErr: true,
-		},
-		{
-			name: "Invalid Tracing Config",
-			config: ObservabilityConfig{
-				Logging: DefaultLoggingConfig(),
-				Metrics: DefaultMetricsConfig(),
-				Tracing: TracingConfig{Enabled: true, ServiceName: ""},
 			},
 			wantErr: true,
 		},

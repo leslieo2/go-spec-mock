@@ -57,11 +57,11 @@ func TestConfig_Validate(t *testing.T) {
 			config: &Config{
 				Server: DefaultServerConfig(),
 				Security: SecurityConfig{
-					RateLimit: RateLimitConfig{
-						Enabled:  true,
-						Strategy: "invalid",
+					CORS: CORSConfig{
+						Enabled:        true,
+						AllowedOrigins: []string{}, // Empty origins should cause validation error
+						AllowedMethods: []string{}, // Empty methods should cause validation error
 					},
-					CORS: DefaultCORSConfig(),
 				},
 				Observability: DefaultObservabilityConfig(),
 				SpecFile:      "test.yaml",
@@ -73,7 +73,6 @@ func TestConfig_Validate(t *testing.T) {
 			name: "Invalid Observability Config",
 			config: &Config{
 				Server:        DefaultServerConfig(),
-				Security:      DefaultSecurityConfig(),
 				Observability: ObservabilityConfig{},
 				SpecFile:      "test.yaml",
 				TLS:           DefaultTLSConfig(),

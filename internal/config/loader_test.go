@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 // Helper functions for pointers
@@ -354,42 +353,6 @@ func Test_overrideWithCLI(t *testing.T) {
 			}(),
 		},
 		{
-			name:       "Test GlobalRateLimit initialization",
-			initialCfg: DefaultConfig(),
-			cliFlags:   &CLIFlags{},
-			expectedCfg: func() *Config {
-				cfg := DefaultConfig()
-				cfg.Security.RateLimit.Global = &RateLimit{
-					RequestsPerSecond: 100,
-					BurstSize:         200,         // Default value
-					WindowSize:        time.Minute, // Default value
-				}
-				return cfg
-			}(),
-		},
-		{
-			name: "Test GlobalRateLimit when already exists",
-			initialCfg: func() *Config {
-				cfg := DefaultConfig()
-				cfg.Security.RateLimit.Global = &RateLimit{
-					RequestsPerSecond: 50,
-					BurstSize:         100,
-					WindowSize:        time.Second,
-				}
-				return cfg
-			}(),
-			cliFlags: &CLIFlags{},
-			expectedCfg: func() *Config {
-				cfg := DefaultConfig()
-				cfg.Security.RateLimit.Global = &RateLimit{
-					RequestsPerSecond: 50,
-					BurstSize:         100,
-					WindowSize:        time.Second,
-				}
-				return cfg
-			}(),
-		},
-		{
 			name:        "Nil CLI Flags",
 			initialCfg:  DefaultConfig(),
 			cliFlags:    nil,
@@ -414,20 +377,6 @@ func Test_overrideWithCLI(t *testing.T) {
 			// Deep compare relevant fields
 			if cfg.Server.Port != tt.expectedCfg.Server.Port {
 				t.Errorf("Port: got %s, want %s", cfg.Server.Port, tt.expectedCfg.Server.Port)
-			}
-			if (cfg.Security.RateLimit.Global == nil) != (tt.expectedCfg.Security.RateLimit.Global == nil) {
-				t.Errorf("GlobalRateLimit nil mismatch: got %v, want %v", cfg.Security.RateLimit.Global == nil, tt.expectedCfg.Security.RateLimit.Global == nil)
-			}
-			if cfg.Security.RateLimit.Global != nil && tt.expectedCfg.Security.RateLimit.Global != nil {
-				if cfg.Security.RateLimit.Global.RequestsPerSecond != tt.expectedCfg.Security.RateLimit.Global.RequestsPerSecond {
-					t.Errorf("GlobalRateLimit: got %d, want %d", cfg.Security.RateLimit.Global.RequestsPerSecond, tt.expectedCfg.Security.RateLimit.Global.RequestsPerSecond)
-				}
-				if cfg.Security.RateLimit.Global.BurstSize != tt.expectedCfg.Security.RateLimit.Global.BurstSize {
-					t.Errorf("RateLimitBurstSize: got %d, want %d", cfg.Security.RateLimit.Global.BurstSize, tt.expectedCfg.Security.RateLimit.Global.BurstSize)
-				}
-				if cfg.Security.RateLimit.Global.WindowSize != tt.expectedCfg.Security.RateLimit.Global.WindowSize {
-					t.Errorf("RateLimitWindowSize: got %v, want %v", cfg.Security.RateLimit.Global.WindowSize, tt.expectedCfg.Security.RateLimit.Global.WindowSize)
-				}
 			}
 		})
 	}
@@ -463,9 +412,6 @@ func Test_mergeConfig(t *testing.T) {
 		{
 			name:    "Merge Auth Enabled",
 			baseCfg: DefaultConfig(),
-			fileCfg: &Config{
-				Security: SecurityConfig{},
-			},
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
 				return cfg

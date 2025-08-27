@@ -6,11 +6,6 @@ import "time"
 const (
 	EnvHost              = "GO_SPEC_MOCK_HOST"
 	EnvPort              = "GO_SPEC_MOCK_PORT"
-	EnvReadTimeout       = "GO_SPEC_MOCK_READ_TIMEOUT"
-	EnvWriteTimeout      = "GO_SPEC_MOCK_WRITE_TIMEOUT"
-	EnvIdleTimeout       = "GO_SPEC_MOCK_IDLE_TIMEOUT"
-	EnvMaxRequestSize    = "GO_SPEC_MOCK_MAX_REQUEST_SIZE"
-	EnvShutdownTimeout   = "GO_SPEC_MOCK_SHUTDOWN_TIMEOUT"
 	EnvSpecFile          = "GO_SPEC_MOCK_SPEC_FILE"
 	EnvHotReload         = "GO_SPEC_MOCK_HOT_RELOAD"
 	EnvHotReloadDebounce = "GO_SPEC_MOCK_HOT_RELOAD_DEBOUNCE"
@@ -42,20 +37,16 @@ const (
 	StatusForbidden           = 403
 	StatusNotFound            = 404
 	StatusMethodNotAllowed    = 405
-	StatusTooManyRequests     = 429
 	StatusInternalServerError = 500
 	StatusServiceUnavailable  = 503
 )
 
 // HTTP header constants
 const (
-	HeaderAuthorization  = "Authorization"
-	HeaderContentType    = "Content-Type"
-	HeaderAccept         = "Accept"
-	HeaderXRequestedWith = "X-Requested-With"
-	HeaderOrigin         = "Origin"
-	HeaderXForwardedFor  = "X-Forwarded-For"
-	HeaderXRealIP        = "X-Real-IP"
+	HeaderAuthorization = "Authorization"
+	HeaderContentType   = "Content-Type"
+	HeaderAccept        = "Accept"
+	HeaderOrigin        = "Origin"
 )
 
 // Content type constants
@@ -72,33 +63,6 @@ const (
 	HeaderAccessControlMaxAge           = "Access-Control-Max-Age"
 )
 
-// Authentication constants
-const (
-	BearerPrefix = "Bearer "
-)
-
-// Rate limiting strategy constants
-const (
-	RateLimitStrategyIP     = "ip"
-	RateLimitStrategyAPIKey = "api_key"
-)
-
-// Rate limiting headers
-const (
-	HeaderXRateLimitLimit     = "X-RateLimit-Limit"
-	HeaderXRateLimitRemaining = "X-RateLimit-Remaining"
-	HeaderXRateLimitReset     = "X-RateLimit-Reset"
-	HeaderRetryAfter          = "Retry-After"
-)
-
-// Rate limiter internal constants
-const (
-	// RateLimitCleanupInterval is the interval for cleaning up rate limit cache
-	RateLimitCleanupInterval = 5 * time.Minute
-	// RateLimitMaxCacheSize is the maximum size of the rate limit cache
-	RateLimitMaxCacheSize = 10000
-)
-
 // Server timeout constants (internal use only - not user configurable)
 const (
 	// ServerReadTimeout is the read timeout for the HTTP server
@@ -111,17 +75,6 @@ const (
 	ServerMaxRequestSize = 10 * 1024 * 1024
 	// ServerShutdownTimeout is the graceful shutdown timeout
 	ServerShutdownTimeout = 30 * time.Second
-)
-
-// Context key types
-
-// Context key constants
-const ()
-
-// Error code constants
-const (
-	ErrorCodeUnauthorized      = "UNAUTHORIZED"
-	ErrorCodeRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 )
 
 // Path constants for skipped authentication

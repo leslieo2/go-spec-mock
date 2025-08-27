@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
-	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/hotreload"
 	"github.com/leslieo2/go-spec-mock/internal/server"
 	"github.com/spf13/pflag"
@@ -23,10 +22,6 @@ func main() {
 	host := pflag.String("host", "localhost", "Host to run the mock server on")
 
 	// Server configuration (timeouts and limits moved to config file/env vars only)
-
-	// Security flags
-	rateLimitEnabled := pflag.Bool("rate-limit-enabled", false, "Enable rate limiting")
-	rateLimitStrategy := pflag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key")
 
 	// Hot reload flags
 	hotReload := pflag.Bool("hot-reload", true, "Enable hot reload for specification file")
@@ -44,17 +39,15 @@ func main() {
 
 	// Create CLI flags struct for configuration loading
 	cliFlags := &config.CLIFlags{
-		Host:              host,
-		Port:              port,
-		SpecFile:          specFile,
-		RateLimitEnabled:  rateLimitEnabled,
-		RateLimitStrategy: rateLimitStrategy,
-		HotReload:         hotReload,
-		ProxyEnabled:      proxyEnabled,
-		ProxyTarget:       proxyTarget,
-		TLSEnabled:        tlsEnabled,
-		TLSCertFile:       tlsCertFile,
-		TLSKeyFile:        tlsKeyFile,
+		Host:         host,
+		Port:         port,
+		SpecFile:     specFile,
+		HotReload:    hotReload,
+		ProxyEnabled: proxyEnabled,
+		ProxyTarget:  proxyTarget,
+		TLSEnabled:   tlsEnabled,
+		TLSCertFile:  tlsCertFile,
+		TLSKeyFile:   tlsKeyFile,
 	}
 
 	// Load configuration with precedence (CLI > Env > File > Defaults)
@@ -112,11 +105,6 @@ func main() {
 	}
 
 	log.Printf("Starting mock server for %s on %s:%s", cfg.SpecFile, cfg.Server.Host, cfg.Server.Port)
-	if cfg.Security.RateLimit.Enabled {
-		log.Printf("Rate limiting enabled (strategy: %s)",
-			cfg.Security.RateLimit.Strategy)
-	}
-
 	if err := mockServer.Start(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

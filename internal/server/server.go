@@ -17,7 +17,6 @@ import (
 	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
-	"github.com/leslieo2/go-spec-mock/internal/security"
 	"github.com/leslieo2/go-spec-mock/internal/server/middleware"
 	"go.uber.org/zap"
 )
@@ -56,9 +55,6 @@ type Server struct {
 	// Dynamic handler for hot reload
 	dynamicHandler *DynamicHandler
 
-	// Security
-	rateLimiter *security.RateLimiter
-
 	// Observability
 	logger    *observability.Logger
 	startTime time.Time
@@ -79,9 +75,6 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize logger: %w", err)
 	}
 
-	// Initialize security
-	rateLimiter := security.NewRateLimiter(&cfg.Security)
-
 	// Pre-build routes and route map
 	routes := p.GetRoutes()
 	routeMap := make(map[string][]parser.Route)
@@ -90,13 +83,12 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	return &Server{
-		parser:      p,
-		config:      cfg,
-		cache:       &sync.Map{},
-		routes:      routes,
-		routeMap:    routeMap,
-		rateLimiter: rateLimiter,
-		logger:      logger,
+		parser:   p,
+		config:   cfg,
+		cache:    &sync.Map{},
+		routes:   routes,
+		routeMap: routeMap,
+		logger:   logger,
 
 		startTime: time.Now(),
 	}, nil

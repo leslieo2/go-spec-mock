@@ -5,26 +5,9 @@
 server:
   host: "localhost"
   port: "8080"
-  metrics_port: "9090"
 
 # Security Configuration
 security:
-  rate_limit:
-    enabled: false
-    strategy: "ip"  # "ip", "api_key"
-    global:
-      requests_per_second: 100
-      burst_size: 200
-      window_size: "1m"
-    by_ip:
-      requests_per_second: 60
-      burst_size: 120
-      window_size: "1m"
-    by_api_key:
-      api-key-1:
-        requests_per_second: 10
-        burst_size: 20
-        window_size: "1m"
   cors:
     enabled: true
     allowed_origins: ["*"]
@@ -38,9 +21,6 @@ observability:
   logging:
     level: "info"  # "debug", "info", "warn", "error"
     format: "json"  # "json" or "console"
-  metrics:
-    enabled: true
-    path: "/metrics"
 
 # Hot Reload Configuration
 hot_reload:

@@ -204,8 +204,6 @@ tls:
 security:
   auth:
     enabled: false
-  rate_limit:
-    enabled: false
   headers:
     enabled: true
     content_security_policy: "default-src 'self'"

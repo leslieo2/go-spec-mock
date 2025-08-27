@@ -4,30 +4,9 @@
 server:
   host: "localhost"
   port: "8080"
-  metrics_port: "9090"
 
 # Comprehensive security configuration
 security:
-  rate_limit:
-    enabled: true
-    strategy: "IP"  # Rate limit by IP
-    global:
-      requests_per_second: 50
-      burst_size: 100
-      window_size: "1m"
-    by_ip:
-      requests_per_second: 30
-      burst_size: 60
-      window_size: "1m"
-    by_api_key:
-      admin-key-secure:
-        requests_per_second: 100
-        burst_size: 200
-        window_size: "1m"
-      readonly-key-secure:
-        requests_per_second: 20
-        burst_size: 40
-        window_size: "1m"
   cors:
     enabled: true
     allowed_origins: ["https://localhost:3000", "https://127.0.0.1:3000"]
@@ -41,9 +20,6 @@ observability:
   logging:
     level: "debug"
     format: "json"
-  metrics:
-    enabled: true
-    path: "/metrics"
 
 spec_file: "./examples/petstore.yaml"
 

@@ -23,7 +23,6 @@
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
 *   **🔥 Hot Reload:** Automatically reloads OpenAPI specifications and configuration files without server restart for rapid development.
 *   **🔒 Secure Mocking:** Full HTTPS/TLS support for testing secure clients and mimicking production environments.
-*   **🛡️ Enterprise Security:** Comprehensive security suite with rate limiting and CORS.
 *   **🔄 Smart Proxy:** Automatically forwards requests for undefined endpoints to a real backend server, enabling hybrid mocking with configurable timeouts.
 *   **📊 Full Observability:** Structured JSON logging, and health/readiness endpoints.
 *   **📦 Zero Dependencies:** A single, cross-platform binary with no runtime dependencies. Works on Linux, macOS, and Windows.
@@ -137,7 +136,6 @@ go-spec-mock --hot-reload=false         # Disable hot reload
 ```bash
 GO_SPEC_MOCK_SPEC_FILE=./api.yaml
 GO_SPEC_MOCK_PORT=8080
-GO_SPEC_MOCK_AUTH_ENABLED=true
 ```
 
 ### 🔧 Configuration Priority
@@ -175,19 +173,6 @@ Configuration is applied in the following order (highest → lowest priority):
 server:
   host: localhost
   port: 8080
-```
-
-**With security:**
-```yaml
-security:
-  auth:
-    enabled: true
-    keys:
-      - key: "your-key"
-        name: "app"
-  rate_limit:
-    enabled: true
-    rps: 100
 ```
 
 **With proxy fallback:**
@@ -247,23 +232,8 @@ With this configuration, you can make requests to `http://localhost:8080`:
 
 Secure your mock server with rate limiting and CORS. These are best configured via a configuration file.
 
-#### Rate Limiting
 
-Enable with `--rate-limit-enabled`. The server returns standard `X-RateLimit-*` headers.
-
-**Example `config.yaml`:**
-```yaml
-security:
-  rate_limit:
-    enabled: true
-    strategy: "ip" # ip, api_key
-    global:
-      requests_per_second: 100
-      burst_size: 200
-      window_size: "1m"
-```
-
-#### CORS & Security Headers
+#### CORS
 
 Configure Cross-Origin Resource Sharing (CORS) and other security headers for enterprise-grade protection.
 
@@ -277,11 +247,6 @@ security:
     allowed_headers: ["Content-Type", "Authorization", "X-API-Key"]
     allow_credentials: false
     max_age: 86400
-  headers:
-    enabled: true
-    content_security_policy: "default-src 'self'"
-    hsts_max_age: 31536000
-    allowed_hosts: ["localhost", "yourdomain.com"]
 ```
 
 #### HTTPS/TLS Support
@@ -438,9 +403,7 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 - [x] Request size limiting
 - [x] Configurable log levels (DEBUG, INFO, WARN, ERROR)
 - [x] Comprehensive security configuration (YAML/JSON)
-- [x] Rate limiting by IP
 - [x] CORS configuration with security headers
-- [ ] Sensitive data masking in logs
 
 #### 📊 Observability
 - [x] Structured (JSON) logging
@@ -449,7 +412,6 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 
 #### 🛡️ Advanced Configuration
 - [x] CORS (Cross-Origin Resource Sharing) configuration
-- [x] Rate limiting with granular controls
 - [x] Configuration via CLI flags and environment variables
 - [x] Customizable server timeouts and ports
 - [x] HTTPS/TLS support
@@ -466,22 +428,57 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 </details>
 
 <details>
-<summary><strong>🚀 Phase 3: <Adv></Adv>Enhanced Enterprise Features (Planned)</strong></summary>
+<summary><strong>🎯 Phase 3: Enhanced Core Mocking & Developer Experience (In Progress)</strong></summary>
 
-#### 🔥 **Core Enterprise Priorities**
-- [ ] **Smart Proxy Routing** - Spec-based intelligent matching for proxy requests
-- [ ] **JWT/OAuth 2.0 Integration** - Modern enterprise security standards
-- [ ] **WebSocket Protocol Mocking** - Real-time API support
+#### 🚀 Core Mocking Enhancements
+- [ ] **Dynamic Data Generation** - Generate realistic mock data from schema when examples are missing
+- [ ] **Named Example Selection** - Support `__example=exampleName` parameter to select specific examples
+- [ ] **Response Latency Simulation** - Add `__delay=500ms` parameter to simulate network delays
 
-#### ⚡ **Enhanced Proxy & Security**
-- [ ] **Response Transformation** - Format conversion for proxied requests
-- [ ] **Stateful Mocking** - Complex business scenario testing
-- [ ] **RBAC & Multi-tenancy** - Team collaboration and access control
+#### 💻 Developer Experience
+- [ ] **CLI Endpoint Listing** - Show all mock endpoints on server startup
+- [ ] **Easier Installation** - Pre-compiled binaries, Homebrew/Scoop packages, and Docker Hub releases
+- [ ] **Enhanced Documentation** - Interactive API docs with try-it functionality
 
-#### 📈 **Production Observability**
-- [ ] **Custom Business Metrics** - Tailored analytics for enterprise needs
-- [ ] **Performance Profiling** - Real-time performance insights
-- [ ] **Enhanced Health Monitoring** - Comprehensive service status
+#### 🔄 Stateful Mocking
+- [ ] **Simple State Management** - In-memory storage for basic stateful API scenarios
+- [ ] **CRUD Operations Support** - Create, read, update, delete operations with persistent state
+
+</details>
+
+<details>
+<summary><strong>🚀 Phase 4: Advanced Integration & Ecosystem (Planned)</strong></summary>
+
+#### 🤖 Smart Proxy & Hybrid Mocking
+- [ ] **Intelligent Proxy Routing** - Configurable proxy rules based on path patterns
+- [ ] **Response Transformation** - Modify proxied responses to match expected formats
+- [ ] **Request Filtering** - Selective proxy based on headers or query parameters
+
+#### 🔐 Authentication Testing
+- [ ] **JWT Validation** - Simple JWT signature verification for testing authenticated clients
+- [ ] **Basic Auth Support** - Mock authentication for testing authorization flows
+
+#### 🌐 Protocol Expansion
+- [ ] **WebSocket Mocking** - Support for real-time API mocking through OpenAPI extensions
+- [ ] **GraphQL Support** - Mock GraphQL APIs with schema-based response generation
+
+</details>
+
+<details>
+<summary><strong>🌟 Phase 5: Ecosystem & Community Growth (Future Vision)</strong></summary>
+
+#### 📦 Go Library Package
+- [ ] **Programmatic API** - Expose core mocking functionality as a Go library for testing
+- [ ] **Testing Integration** - Seamless integration with Go testing frameworks
+
+#### 🔌 IDE & Editor Plugins
+- [ ] **VS Code Extension** - GUI for managing mock servers and configurations
+- [ ] **CLI Autocomplete** - Smart autocomplete for configuration and commands
+
+#### 🤝 Community & Standards
+- [ ] **Plugin System** - Extensible architecture for custom response generators
+- [ ] **OpenAPI Extensions** - Contribute to OpenAPI specification for enhanced mocking capabilities
+- [ ] **API Blueprint Support** - Expand support to additional API specification formats
 
 </details>
 

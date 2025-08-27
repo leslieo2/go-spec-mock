@@ -7,13 +7,6 @@ Config Field (Go Struct Path),YAML/JSON Key,CLI Flag,Environment Variable,Defaul
 `Config.Server.Host`,`server.host`,`--host`,`GO_SPEC_MOCK_HOST`,`localhost`,Host to run the mock server on.
 `Config.Server.Port`,`server.port`,`--port`,`GO_SPEC_MOCK_PORT`,`8080`,Port to run the mock server on.
 
-`Config.Security.RateLimit.Enabled`,`security.rate_limit.enabled`,`--rate-limit-enabled`,N/A,`true`,Enable global rate limiting.
-`Config.Security.RateLimit.Strategy`,`security.rate_limit.strategy`,`--rate-limit-strategy`,N/A,`ip`,Rate limiting strategy (`ip` or `api_key`).
-`Config.Security.RateLimit.Global.RequestsPerSecond`,`security.rate_limit.global.requests_per_second`,N/A,N/A,`100`,Global rate limit requests per second.
-`Config.Security.RateLimit.Global.BurstSize`,`security.rate_limit.global.burst_size`,N/A,N/A,`200`,Global rate limit burst size.
-`Config.Security.RateLimit.Global.WindowSize`,`security.rate_limit.global.window_size`,N/A,N/A,`1m`,Global rate limit window size.
-`Config.Security.RateLimit.ByAPIKey`,`security.rate_limit.by_api_key`,N/A,N/A,`{}` (empty map),Per-API key rate limit settings.
-`Config.Security.RateLimit.ByIP`,`security.rate_limit.by_ip`,N/A,N/A,"`(RPS: 60, Burst: 120, Window: 1m)`",Per-IP rate limit settings.
 `Config.Security.CORS.Enabled`,`security.cors.enabled`,N/A,N/A,`true`,Enable CORS.
 `Config.Security.CORS.AllowedOrigins`,`security.cors.allowed_origins`,N/A,N/A,"`[""*""]`",List of allowed origins for CORS.
 `Config.Security.CORS.AllowedMethods`,`security.cors.allowed_methods`,N/A,N/A,"`[GET, POST, PUT, DELETE, OPTIONS, PATCH]`",List of allowed HTTP methods for CORS.

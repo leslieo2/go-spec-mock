@@ -23,11 +23,6 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 		handler = corsMiddleware.Handler(handler)
 	}
 
-	// Rate limiting middleware
-	if s.rateLimiter != nil {
-		handler = s.rateLimiter.Middleware(handler)
-	}
-
 	// Request size limit middleware
 	handler = middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize)(handler)
 

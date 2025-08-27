@@ -19,7 +19,6 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Server:        DefaultServerConfig(),
-		Security:      DefaultSecurityConfig(),
 		Observability: DefaultObservabilityConfig(),
 		SpecFile:      "",
 		HotReload:     DefaultHotReloadConfig(),

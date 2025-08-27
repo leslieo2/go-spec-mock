@@ -52,18 +52,16 @@ func LoadConfig(configFile string, cliFlags *CLIFlags) (*Config, error) {
 // CLIFlags contains CLI flag values that can override configuration
 // This struct is used to pass CLI flag values without using the flag package directly
 type CLIFlags struct {
-	Host              *string
-	Port              *string
-	MetricsPort       *string
-	SpecFile          *string
-	RateLimitEnabled  *bool
-	RateLimitStrategy *string
-	HotReload         *bool
-	ProxyEnabled      *bool
-	ProxyTarget       *string
-	TLSEnabled        *bool
-	TLSCertFile       *string
-	TLSKeyFile        *string
+	Host         *string
+	Port         *string
+	MetricsPort  *string
+	SpecFile     *string
+	HotReload    *bool
+	ProxyEnabled *bool
+	ProxyTarget  *string
+	TLSEnabled   *bool
+	TLSCertFile  *string
+	TLSKeyFile   *string
 }
 
 // loadFromFile loads configuration from a YAML or JSON file
@@ -169,14 +167,6 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 		config.Server.Port = *flags.Port
 	}
 
-	// Security flags
-	if flags.RateLimitEnabled != nil && isFlagSet("rate-limit-enabled") {
-		config.Security.RateLimit.Enabled = *flags.RateLimitEnabled
-	}
-	if flags.RateLimitStrategy != nil && isFlagSet("rate-limit-strategy") && (*flags.RateLimitStrategy == constants.RateLimitStrategyIP || *flags.RateLimitStrategy == constants.RateLimitStrategyAPIKey) {
-		config.Security.RateLimit.Strategy = *flags.RateLimitStrategy
-	}
-
 	// Spec file and hot reload
 	if flags.SpecFile != nil && isFlagSet("spec-file") && *flags.SpecFile != "" {
 		config.SpecFile = *flags.SpecFile
@@ -227,11 +217,6 @@ func mergeConfig(base *Config, file *Config) {
 	}
 	if file.Server.Port != "" {
 		base.Server.Port = file.Server.Port
-	}
-
-	// Merge security configuration
-	if file.Security.RateLimit.Enabled != base.Security.RateLimit.Enabled {
-		base.Security.RateLimit = file.Security.RateLimit
 	}
 
 	// Merge observability configuration

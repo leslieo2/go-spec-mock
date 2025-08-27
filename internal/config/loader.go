@@ -119,31 +119,6 @@ func loadFromEnv(config *Config) {
 	if val := os.Getenv(constants.EnvMetricsPort); val != "" {
 		config.Server.MetricsPort = val
 	}
-	if val := os.Getenv(constants.EnvReadTimeout); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			config.Server.ReadTimeout = duration
-		}
-	}
-	if val := os.Getenv(constants.EnvWriteTimeout); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			config.Server.WriteTimeout = duration
-		}
-	}
-	if val := os.Getenv(constants.EnvIdleTimeout); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			config.Server.IdleTimeout = duration
-		}
-	}
-	if val := os.Getenv(constants.EnvMaxRequestSize); val != "" {
-		if size, err := strconv.ParseInt(val, 10, 64); err == nil {
-			config.Server.MaxRequestSize = size
-		}
-	}
-	if val := os.Getenv(constants.EnvShutdownTimeout); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			config.Server.ShutdownTimeout = duration
-		}
-	}
 	if val := os.Getenv(constants.EnvSpecFile); val != "" {
 		config.SpecFile = val
 	}
@@ -253,6 +228,10 @@ func isFlagSet(flagName string) bool {
 
 // mergeConfig merges file configuration into the base configuration
 func mergeConfig(base *Config, file *Config) {
+	if file == nil {
+		return
+	}
+
 	if file.Server.Host != "" {
 		base.Server.Host = file.Server.Host
 	}
@@ -261,21 +240,6 @@ func mergeConfig(base *Config, file *Config) {
 	}
 	if file.Server.MetricsPort != "" {
 		base.Server.MetricsPort = file.Server.MetricsPort
-	}
-	if file.Server.ReadTimeout > 0 {
-		base.Server.ReadTimeout = file.Server.ReadTimeout
-	}
-	if file.Server.WriteTimeout > 0 {
-		base.Server.WriteTimeout = file.Server.WriteTimeout
-	}
-	if file.Server.IdleTimeout > 0 {
-		base.Server.IdleTimeout = file.Server.IdleTimeout
-	}
-	if file.Server.MaxRequestSize > 0 {
-		base.Server.MaxRequestSize = file.Server.MaxRequestSize
-	}
-	if file.Server.ShutdownTimeout > 0 {
-		base.Server.ShutdownTimeout = file.Server.ShutdownTimeout
 	}
 
 	// Merge security configuration

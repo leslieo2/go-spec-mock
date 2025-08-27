@@ -125,9 +125,10 @@ const (
 
 // Path constants for skipped authentication
 const (
-	PathHealth  = "/health"
-	PathReady   = "/ready"
-	PathMetrics = "/metrics"
+	PathHealth        = "/health"
+	PathReady         = "/ready"
+	PathMetrics       = "/metrics"
+	PathDocumentation = "/docs"
 )
 
 // Query parameter constants

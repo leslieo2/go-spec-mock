@@ -140,11 +140,15 @@ func (s *Server) buildHandler() http.Handler {
 		s.registerRoute(mux, path, routes)
 	}
 
-	// Add documentation endpoint only if no root route is defined in OpenAPI
+	// Add documentation endpoint at /docs
+	mux.HandleFunc(constants.PathDocumentation, s.serveDocumentation)
+
+	// Handle root path: if no OpenAPI route exists, serve documentation or proxy
 	if !rootExists {
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/" {
-				s.serveDocumentation(w, r)
+				// Redirect to documentation or handle based on configuration
+				http.Redirect(w, r, constants.PathDocumentation, http.StatusFound)
 			} else if s.config.Proxy.Enabled {
 				s.handleProxyRequest(w, r)
 			} else {

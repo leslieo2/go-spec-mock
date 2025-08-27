@@ -122,7 +122,7 @@ curl "http://localhost:8080/users?__statusCode=500"
 
 ## ⚙️ Configuration
 
-For a comprehensive, grouped overview of all configuration options, including their YAML/JSON keys, CLI flags, environment variables, and default values, please refer to the [Full Configuration Documentation](CONFIGURATION.md).
+For a comprehensive, grouped overview of all configuration options, including their YAML/JSON keys, CLI flags, environment variables, and default values, please refer to the [Full Configuration Documentation](configuration.csv).
 
 ### Quick Reference
 
@@ -345,11 +345,11 @@ When enabled, the server will run on HTTPS only. Any HTTP requests to the same p
 
 The server provides built-in observability endpoints:
 
-| Endpoint | Description |
-| :--- | :--- |
-| `/` | API documentation with available endpoints |
-| `/health` | Health check endpoint with service status |
-| `/ready` | Readiness probe for load balancers |
+| Endpoint   | Description |
+|:-----------| :--- |
+| `/docs`    | API documentation with available endpoints |
+| `/health`  | Health check endpoint with service status |
+| `/ready`   | Readiness probe for load balancers |
 | `/metrics` | Prometheus metrics endpoint (on metrics port) |
 
 **Usage examples:**

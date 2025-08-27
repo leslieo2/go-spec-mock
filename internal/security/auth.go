@@ -238,6 +238,7 @@ func (am *AuthManager) shouldSkipAuth(path string) bool {
 		constants.PathHealth,
 		constants.PathReady,
 		constants.PathMetrics,
+		constants.PathDocumentation,
 	}
 
 	for _, skipped := range skippedPaths {

@@ -129,6 +129,11 @@ func generateExampleFromSchema(schema *openapi3.Schema) interface{} {
 		return nil
 	}
 
+	// Check if schema has an example
+	if schema.Example != nil {
+		return schema.Example
+	}
+
 	switch {
 	case schema.Type.Is("object"):
 		result := make(map[string]interface{}, len(schema.Properties))

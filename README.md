@@ -85,7 +85,7 @@ Go-Spec-Mock is designed for **API development and testing workflows** where you
 go install github.com/leslieo2/go-spec-mock@latest
 
 # Start mocking with the Petstore example
-go-spec-mock -spec-file ./examples/petstore.yaml
+go-spec-mock --spec-file ./examples/petstore.yaml
 
 # Test it
 curl http://localhost:8080/pets
@@ -102,7 +102,7 @@ curl http://localhost:8080/pets
 
 **Start with your OpenAPI spec:**
 ```bash
-go-spec-mock ./your-api.yaml
+go-spec-mock --spec-file ./your-api.yaml
 ```
 
 **Test different scenarios:**
@@ -126,9 +126,9 @@ curl "http://localhost:8080/users?__statusCode=500"
 
 **Essential flags:**
 ```bash
-go-spec-mock -spec-file ./api.yaml     # Start with spec
-go-spec-mock -config ./config.yaml     # Use config file
-go-spec-mock -hot-reload=false         # Disable hot reload
+go-spec-mock --spec-file ./api.yaml     # Start with spec
+go-spec-mock --config ./config.yaml     # Use config file
+go-spec-mock --hot-reload=false         # Disable hot reload
 ```
 
 **Environment variables:**
@@ -142,26 +142,28 @@ GO_SPEC_MOCK_AUTH_ENABLED=true
 
 Configuration is applied in the following order (highest → lowest priority):
 
-1. **CLI Flags** (explicit or default, e.g., `-port 8443` or the default value for `-port`) - Highest priority
+1. **Explicit CLI Flags** (e.g., `--port 8443`) - Highest priority
 2. **Environment Variables** (`GO_SPEC_MOCK_PORT=8443`)
 3. **Configuration File Values** (`port: "8443"` in config.yaml)
-4. **Default Configuration** - Built-in defaults (lowest priority)
+4. **CLI Flag Default Values** (e.g., default value for `--port`)
+5. **Default Configuration** - Built-in defaults (lowest priority)
 
 **Important Notes:**
-- CLI flags (including defaults) override all other configuration sources
-- Configuration files override CLI flag default values
+- Only explicitly set CLI flags override other configuration sources
+- CLI flag default values have lower priority than configuration files
+- Environment variables override configuration file values
 - For production use, prefer configuration files over CLI flags
 
 **Examples:**
 ```bash
 # ✅ Config file overrides CLI defaults
-# go-spec-mock -config config.yaml  # Uses port from config file
+# go-spec-mock --config config.yaml  # Uses port from config file
 
 # ✅ Explicit CLI flag overrides everything
-# go-spec-mock -config config.yaml -port 8443  # Uses port 8443
+# go-spec-mock --config config.yaml --port 8443  # Uses port 8443
 
 # ✅ CLI default values are used as fallback
-# go-spec-mock -spec-file api.yaml  # Uses port 8080 (CLI default)
+# go-spec-mock --spec-file api.yaml  # Uses port 8080 (CLI default)
 ```
 
 ### Common Configurations
@@ -200,7 +202,7 @@ For complex setups, especially involving security, a YAML or JSON configuration 
 
 ```bash
 # Use a configuration file
-go-spec-mock -config ./config.yaml -spec-file ./examples/petstore.yaml
+go-spec-mock --config ./config.yaml --spec-file ./examples/petstore.yaml
 ```
 
 **Example configuration files are provided:**
@@ -245,11 +247,11 @@ Secure your mock server with API key authentication, rate limiting, security hea
 
 #### API Key Authentication
 
-Enable with `-auth-enabled` or in a config file. You can generate keys with the `-generate-key` flag.
+Enable with `--auth-enabled` or in a config file. You can generate keys with the `--generate-key` flag.
 
 ```bash
 # Generate a key named "my-app"
-go-spec-mock -spec-file ./examples/petstore.yaml -generate-key "my-app"
+go-spec-mock --spec-file ./examples/petstore.yaml --generate-key "my-app"
 ```
 
 **Example `config.yaml`:**
@@ -276,7 +278,7 @@ curl "http://localhost:8080/pets?api_key=your-key-here"
 
 #### Rate Limiting
 
-Enable with `-rate-limit-enabled`. The server returns standard `X-RateLimit-*` headers.
+Enable with `--rate-limit-enabled`. The server returns standard `X-RateLimit-*` headers.
 
 **Example `config.yaml`:**
 ```yaml
@@ -332,7 +334,7 @@ tls:
 
 You can also enable TLS and specify file paths via CLI flags:
 ```bash
-go-spec-mock -spec-file ./api.yaml -tls-enabled -tls-cert-file cert.pem -tls-key-file key.pem
+go-spec-mock --spec-file ./api.yaml --tls-enabled --tls-cert-file cert.pem --tls-key-file key.pem
 ```
 
 When enabled, the server will run on HTTPS only. Any HTTP requests to the same port will fail.
@@ -368,14 +370,14 @@ docker build -t go-spec-mock .
 # 2. Run the container with a mounted config file
 docker run -p 8080:8080 -p 9090:9090 \
   -v $(pwd)/examples:/app/examples \
-  go-spec-mock:latest -config ./examples/config/minimal.yaml -spec-file ./examples/petstore.yaml
+  go-spec-mock:latest --config ./examples/config/minimal.yaml --spec-file ./examples/petstore.yaml
 
 # 3. Run with configuration via environment variables
 docker run -p 8081:8081 -p 9091:9091 \
   -e GO_SPEC_MOCK_PORT=8081 \
   -e GO_SPEC_MOCK_METRICS_PORT=9091 \
   -v $(pwd)/examples/petstore.yaml:/app/petstore.yaml \
-  go-spec-mock:latest -spec-file /app/petstore.yaml
+  go-spec-mock:latest --spec-file /app/petstore.yaml
 ```
 
 ## 👨‍💻 Development & Contribution

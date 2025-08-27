@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,49 +12,48 @@ import (
 	"github.com/leslieo2/go-spec-mock/internal/hotreload"
 	"github.com/leslieo2/go-spec-mock/internal/security"
 	"github.com/leslieo2/go-spec-mock/internal/server"
+	"github.com/spf13/pflag"
 )
 
 func main() {
 	// No longer require positional arguments
 
 	// Parse CLI flags
-	configFile := flag.String("config", "", "Path to configuration file (YAML or JSON)")
-	specFile := flag.String("spec-file", "", "Path to OpenAPI specification file")
-	port := flag.String("port", "8080", "Port to run the mock server on")
-	host := flag.String("host", "localhost", "Host to run the mock server on")
-	metricsPort := flag.String("metrics-port", "9090", "Port to run the metrics server on")
+	configFile := pflag.String("config", "", "Path to configuration file (YAML or JSON)")
+	specFile := pflag.String("spec-file", "", "Path to OpenAPI specification file")
+	port := pflag.String("port", "8080", "Port to run the mock server on")
+	host := pflag.String("host", "localhost", "Host to run the mock server on")
+	metricsPort := pflag.String("metrics-port", "9090", "Port to run the metrics server on")
 
 	// Server configuration
-	readTimeout := flag.Duration("read-timeout", 15*time.Second, "HTTP server read timeout")
-	writeTimeout := flag.Duration("write-timeout", 15*time.Second, "HTTP server write timeout")
-	idleTimeout := flag.Duration("idle-timeout", 60*time.Second, "HTTP server idle timeout")
-	maxRequestSize := flag.Int64("max-request-size", 10*1024*1024, "Maximum request size in bytes")
-	shutdownTimeout := flag.Duration("shutdown-timeout", 30*time.Second, "Graceful shutdown timeout")
+	readTimeout := pflag.Duration("read-timeout", 15*time.Second, "HTTP server read timeout")
+	writeTimeout := pflag.Duration("write-timeout", 15*time.Second, "HTTP server write timeout")
+	idleTimeout := pflag.Duration("idle-timeout", 60*time.Second, "HTTP server idle timeout")
+	maxRequestSize := pflag.Int64("max-request-size", 10*1024*1024, "Maximum request size in bytes")
+	shutdownTimeout := pflag.Duration("shutdown-timeout", 30*time.Second, "Graceful shutdown timeout")
 
 	// Security flags
-	authEnabled := flag.Bool("auth-enabled", false, "Enable API key authentication")
-	rateLimitEnabled := flag.Bool("rate-limit-enabled", false, "Enable rate limiting")
-	rateLimitStrategy := flag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key, both")
-	rateLimitRPS := flag.Int("rate-limit-rps", 100, "Global rate limit requests per second")
-	generateKey := flag.String("generate-key", "", "Generate a new API key with given name")
+	authEnabled := pflag.Bool("auth-enabled", false, "Enable API key authentication")
+	rateLimitEnabled := pflag.Bool("rate-limit-enabled", false, "Enable rate limiting")
+	rateLimitStrategy := pflag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key, both")
+	rateLimitRPS := pflag.Int("rate-limit-rps", 100, "Global rate limit requests per second")
+	generateKey := pflag.String("generate-key", "", "Generate a new API key with given name")
 
 	// Hot reload flags
-	hotReload := flag.Bool("hot-reload", true, "Enable hot reload for specification file")
-	hotReloadDebounce := flag.Duration("hot-reload-debounce", 500*time.Millisecond, "Debounce time for hot reload events")
+	hotReload := pflag.Bool("hot-reload", true, "Enable hot reload for specification file")
+	hotReloadDebounce := pflag.Duration("hot-reload-debounce", 500*time.Millisecond, "Debounce time for hot reload events")
 
 	// Proxy flags
-	proxyEnabled := flag.Bool("proxy-enabled", false, "Enable proxy mode for undefined endpoints")
-	proxyTarget := flag.String("proxy-target", "", "Target server URL for proxy mode")
-	proxyTimeout := flag.Duration("proxy-timeout", 30*time.Second, "Timeout for proxy requests")
+	proxyEnabled := pflag.Bool("proxy-enabled", false, "Enable proxy mode for undefined endpoints")
+	proxyTarget := pflag.String("proxy-target", "", "Target server URL for proxy mode")
+	proxyTimeout := pflag.Duration("proxy-timeout", 30*time.Second, "Timeout for proxy requests")
 
 	// TLS flags
-	tlsEnabled := flag.Bool("tls-enabled", false, "Enable HTTPS/TLS")
-	tlsCertFile := flag.String("tls-cert-file", "", "Path to TLS certificate file")
-	tlsKeyFile := flag.String("tls-key-file", "", "Path to TLS private key file")
+	tlsEnabled := pflag.Bool("tls-enabled", false, "Enable HTTPS/TLS")
+	tlsCertFile := pflag.String("tls-cert-file", "", "Path to TLS certificate file")
+	tlsKeyFile := pflag.String("tls-key-file", "", "Path to TLS private key file")
 
-	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
-		log.Fatalf("Failed to parse flags: %v", err)
-	}
+	pflag.Parse()
 
 	// Create CLI flags struct for configuration loading
 	cliFlags := &config.CLIFlags{

@@ -49,35 +49,35 @@ clean:
 # Run with example petstore
 run-example:
 	@echo "Starting mock server with petstore example..."
-	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml
+	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml
 
 # Run with example petstore and security features enabled
 run-example-secure: build
 	@echo "Starting mock server with petstore example (auth and rate limit enabled)"
-	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -auth-enabled -rate-limit-enabled -rate-limit-rps 10
+	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml --auth-enabled --rate-limit-enabled --rate-limit-rps 10
 
 # Run with security-focused configuration
 run-example-secure-config: build
 	@echo "Starting mock server with security-focused configuration..."
-	$(BIN_DIR)/$(BINARY) -config ./examples/config/security-focused.yaml -spec-file ./examples/petstore.yaml
+	$(BIN_DIR)/$(BINARY) --config ./examples/config/security-focused.yaml --spec-file ./examples/petstore.yaml
 
 # Run with minimal configuration
 run-example-minimal: build
 	@echo "Starting mock server with minimal configuration..."
-	$(BIN_DIR)/$(BINARY) -config ./examples/config/minimal.yaml -spec-file ./examples/petstore.yaml
+	$(BIN_DIR)/$(BINARY) --config ./examples/config/minimal.yaml --spec-file ./examples/petstore.yaml
 
 # Run with TLS enabled (requires cert.pem and key.pem to exist)
 run-example-tls: build
 	@echo "Starting mock server with TLS enabled..."
 	@echo "Note: This requires cert.pem and key.pem to exist in the root directory."
 	@echo "You can generate them with: openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes"
-	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -tls-enabled -tls-cert-file cert.pem -tls-key-file key.pem
+	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml --tls-enabled --tls-cert-file cert.pem --tls-key-file key.pem
 
 # Generate a new API key
 generate-key:
 	@echo "Generating a new API key..."
 	@read -p "Enter a name for the key: " key_name; \
-	$(BIN_DIR)/$(BINARY) ./examples/petstore.yaml -generate-key $key_name
+	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml --generate-key $key_name
 
 # Install binary to GOPATH/bin
 install: deps fmt
@@ -160,24 +160,24 @@ docker:
 # Docker run with example
 docker-run:
 	@echo "Starting Docker container with petstore example..."
-	docker run -p 8080:8080 $(BINARY):latest -spec-file ./examples/petstore.yaml
+	docker run -p 8080:8080 $(BINARY):latest --spec-file ./examples/petstore.yaml
 
 # Docker run with configuration file
 docker-run-config:
 	@echo "Starting Docker container with configuration file..."
 	docker run -p 8080:8080 -p 9090:9090 \
 	  -v $(pwd)/examples:/app/examples \
-	  $(BINARY):latest -config ./examples/config/minimal.yaml -spec-file ./examples/petstore.yaml
+	  $(BINARY):latest --config ./examples/config/minimal.yaml --spec-file ./examples/petstore.yaml
 
 # Docker run interactive
 docker-run-dev:
 	@echo "Starting Docker container in development mode..."
-	docker run -it -p 8080:8080 $(BINARY):latest -spec-file ./examples/petstore.yaml -port 8080
+	docker run -it -p 8080:8080 $(BINARY):latest --spec-file ./examples/petstore.yaml --port 8080
 
 # Quick development server
 dev:
 	@echo "Starting development server..."
-	go run . -spec-file ./examples/petstore.yaml -port 8080
+	go run . --spec-file ./examples/petstore.yaml --port 8080
 
 # Watch for changes and rebuild (requires entr)
 watch:
@@ -191,7 +191,7 @@ watch:
 # Quick curl test commands
 curl-test: build
 	@echo "Starting server for curl testing..."
-	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -port 8085 & 
+	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml --port 8085 & 
 	SERVER_PID=$$!; \
 	sleep 2; \
 	echo "=== Testing endpoints ==="; \
@@ -220,7 +220,7 @@ curl-interactive: build
 	@echo "  curl 'http://localhost:8080/pets/123?__statusCode=404'"
 	@echo "  curl -X POST http://localhost:8080/pets"
 	@echo "  curl -X DELETE http://localhost:8080/pets/123"
-	$(BIN_DIR)/$(BINARY) -spec-file ./examples/petstore.yaml -port 8080
+	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml --port 8080
 
 # Show help
 help:

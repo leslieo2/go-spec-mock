@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/constants"
+	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
 
 // LoadConfig loads configuration with precedence:
-// 1. CLI flags (override everything)
+// 1. Explicit CLI flags (highest priority)
 // 2. Environment variables
 // 3. Configuration file values
 // 4. CLI flag default values
@@ -191,46 +192,49 @@ func loadFromEnv(config *Config) {
 }
 
 // overrideWithCLI overrides configuration with CLI flag values
-// CLI flags (including defaults) override all other configuration sources
+// Only explicitly set CLI flags override other configuration sources
 func overrideWithCLI(config *Config, flags *CLIFlags) {
 	if flags == nil {
 		return
 	}
-	if flags.Host != nil && *flags.Host != "" {
+
+	// Server configuration
+	if flags.Host != nil && isFlagSet("host") && *flags.Host != "" {
 		config.Server.Host = *flags.Host
 	}
-	if flags.Port != nil && *flags.Port != "" {
+	if flags.Port != nil && isFlagSet("port") && *flags.Port != "" {
 		config.Server.Port = *flags.Port
 	}
-	if flags.MetricsPort != nil && *flags.MetricsPort != "" {
+	if flags.MetricsPort != nil && isFlagSet("metrics-port") && *flags.MetricsPort != "" {
 		config.Server.MetricsPort = *flags.MetricsPort
 	}
-	if flags.ReadTimeout != nil && *flags.ReadTimeout > 0 {
+	if flags.ReadTimeout != nil && isFlagSet("read-timeout") {
 		config.Server.ReadTimeout = *flags.ReadTimeout
 	}
-	if flags.WriteTimeout != nil && *flags.WriteTimeout > 0 {
+	if flags.WriteTimeout != nil && isFlagSet("write-timeout") {
 		config.Server.WriteTimeout = *flags.WriteTimeout
 	}
-	if flags.IdleTimeout != nil && *flags.IdleTimeout > 0 {
+	if flags.IdleTimeout != nil && isFlagSet("idle-timeout") {
 		config.Server.IdleTimeout = *flags.IdleTimeout
 	}
-	if flags.MaxRequestSize != nil && *flags.MaxRequestSize > 0 {
+	if flags.MaxRequestSize != nil && isFlagSet("max-request-size") {
 		config.Server.MaxRequestSize = *flags.MaxRequestSize
 	}
-	if flags.ShutdownTimeout != nil && *flags.ShutdownTimeout > 0 {
+	if flags.ShutdownTimeout != nil && isFlagSet("shutdown-timeout") {
 		config.Server.ShutdownTimeout = *flags.ShutdownTimeout
 	}
-	if flags.AuthEnabled != nil {
+
+	// Security flags
+	if flags.AuthEnabled != nil && isFlagSet("auth-enabled") {
 		config.Security.Auth.Enabled = *flags.AuthEnabled
 	}
-	// AuthConfig field was removed - security config is now part of main config file
-	if flags.RateLimitEnabled != nil {
+	if flags.RateLimitEnabled != nil && isFlagSet("rate-limit-enabled") {
 		config.Security.RateLimit.Enabled = *flags.RateLimitEnabled
 	}
-	if flags.RateLimitStrategy != nil && *flags.RateLimitStrategy != "" {
+	if flags.RateLimitStrategy != nil && isFlagSet("rate-limit-strategy") {
 		config.Security.RateLimit.Strategy = *flags.RateLimitStrategy
 	}
-	if flags.RateLimitRPS != nil && *flags.RateLimitRPS > 0 {
+	if flags.RateLimitRPS != nil && isFlagSet("rate-limit-rps") {
 		if config.Security.RateLimit.Global == nil {
 			config.Security.RateLimit.Global = &GlobalRateLimit{
 				RequestsPerSecond: *flags.RateLimitRPS,
@@ -241,33 +245,50 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 			config.Security.RateLimit.Global.RequestsPerSecond = *flags.RateLimitRPS
 		}
 	}
-	if flags.SpecFile != nil && *flags.SpecFile != "" {
+
+	// Spec file and hot reload
+	if flags.SpecFile != nil && isFlagSet("spec-file") && *flags.SpecFile != "" {
 		config.SpecFile = *flags.SpecFile
 	}
-	if flags.HotReload != nil {
+	if flags.HotReload != nil && isFlagSet("hot-reload") {
 		config.HotReload.Enabled = *flags.HotReload
 	}
-	if flags.HotReloadDebounce != nil && *flags.HotReloadDebounce > 0 {
+	if flags.HotReloadDebounce != nil && isFlagSet("hot-reload-debounce") {
 		config.HotReload.Debounce = *flags.HotReloadDebounce
 	}
-	if flags.ProxyEnabled != nil {
+
+	// Proxy configuration
+	if flags.ProxyEnabled != nil && isFlagSet("proxy-enabled") {
 		config.Proxy.Enabled = *flags.ProxyEnabled
 	}
-	if flags.ProxyTarget != nil && *flags.ProxyTarget != "" {
+	if flags.ProxyTarget != nil && isFlagSet("proxy-target") && *flags.ProxyTarget != "" {
 		config.Proxy.Target = *flags.ProxyTarget
 	}
-	if flags.ProxyTimeout != nil && *flags.ProxyTimeout > 0 {
+	if flags.ProxyTimeout != nil && isFlagSet("proxy-timeout") {
 		config.Proxy.Timeout = *flags.ProxyTimeout
 	}
-	if flags.TLSEnabled != nil {
+
+	// TLS configuration
+	if flags.TLSEnabled != nil && isFlagSet("tls-enabled") {
 		config.TLS.Enabled = *flags.TLSEnabled
 	}
-	if flags.TLSCertFile != nil && *flags.TLSCertFile != "" {
+	if flags.TLSCertFile != nil && isFlagSet("tls-cert-file") && *flags.TLSCertFile != "" {
 		config.TLS.CertFile = *flags.TLSCertFile
 	}
-	if flags.TLSKeyFile != nil && *flags.TLSKeyFile != "" {
+	if flags.TLSKeyFile != nil && isFlagSet("tls-key-file") && *flags.TLSKeyFile != "" {
 		config.TLS.KeyFile = *flags.TLSKeyFile
 	}
+}
+
+// isFlagSet checks if a flag is set (changed) in pflag, or returns true if pflag is not initialized
+// This allows the function to work in test environments where pflag may not be initialized
+func isFlagSet(flagName string) bool {
+	flag := pflag.Lookup(flagName)
+	if flag == nil {
+		// If pflag isn't initialized with this flag, assume it's set for testing
+		return true
+	}
+	return flag.Changed
 }
 
 // mergeConfig merges file configuration into the base configuration

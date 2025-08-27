@@ -241,7 +241,7 @@ EOF
     
     # Step 4: Start the server
     print_status "Starting HTTPS server..."
-    "./$BINARY_NAME" -spec-file ./examples/petstore.yaml -config "$CONFIG_FILE" -port "$TEST_PORT" -tls-enabled -tls-cert-file "$CERT_FILE" -tls-key-file "$KEY_FILE" > server.log 2>&1 &
+    "./$BINARY_NAME" --spec-file ./examples/petstore.yaml --config "$CONFIG_FILE" --port "$TEST_PORT" --tls-enabled --tls-cert-file "$CERT_FILE" --tls-key-file "$KEY_FILE" > server.log 2>&1 &
     SERVER_PID=$!
     
     # Wait for server to be ready

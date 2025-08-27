@@ -8,10 +8,9 @@ import (
 )
 
 // Helper functions for pointers
-func stringPtr(s string) *string                 { return &s }
-func boolPtr(b bool) *bool                       { return &b }
-func intPtr(i int) *int                          { return &i }
-func durationPtr(d time.Duration) *time.Duration { return &d }
+func stringPtr(s string) *string { return &s }
+func boolPtr(b bool) *bool       { return &b }
+func intPtr(i int) *int          { return &i }
 
 func TestLoadConfig(t *testing.T) {
 	tests := []struct {
@@ -366,18 +365,6 @@ func Test_overrideWithCLI(t *testing.T) {
 			}(),
 		},
 		{
-			name:       "Override ReadTimeout",
-			initialCfg: DefaultConfig(),
-			cliFlags: &CLIFlags{
-				ReadTimeout: durationPtr(5 * time.Second),
-			},
-			expectedCfg: func() *Config {
-				cfg := DefaultConfig()
-				cfg.Server.ReadTimeout = 5 * time.Second
-				return cfg
-			}(),
-		},
-		{
 			name:       "Override AuthEnabled",
 			initialCfg: DefaultConfig(),
 			cliFlags: &CLIFlags{
@@ -397,7 +384,7 @@ func Test_overrideWithCLI(t *testing.T) {
 			},
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
-				cfg.Security.RateLimit.Global = &GlobalRateLimit{
+				cfg.Security.RateLimit.Global = &RateLimit{
 					RequestsPerSecond: 100,
 					BurstSize:         200,         // Default value
 					WindowSize:        time.Minute, // Default value
@@ -409,7 +396,7 @@ func Test_overrideWithCLI(t *testing.T) {
 			name: "Override RateLimitRPS when GlobalRateLimit already exists",
 			initialCfg: func() *Config {
 				cfg := DefaultConfig()
-				cfg.Security.RateLimit.Global = &GlobalRateLimit{
+				cfg.Security.RateLimit.Global = &RateLimit{
 					RequestsPerSecond: 50,
 					BurstSize:         100,
 					WindowSize:        time.Second,
@@ -421,7 +408,7 @@ func Test_overrideWithCLI(t *testing.T) {
 			},
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
-				cfg.Security.RateLimit.Global = &GlobalRateLimit{
+				cfg.Security.RateLimit.Global = &RateLimit{
 					RequestsPerSecond: 150,
 					BurstSize:         100,         // Should remain unchanged
 					WindowSize:        time.Second, // Should remain unchanged

@@ -16,9 +16,9 @@ import (
 )
 
 type RateLimiter struct {
-	limiters *cache.Cache
-	config   *config.RateLimitConfig
-	clock    Clock
+	limiters       *cache.Cache
+	securityConfig *config.SecurityConfig
+	clock          Clock
 }
 
 type Clock interface {
@@ -31,36 +31,36 @@ func (RealClock) Now() time.Time {
 	return time.Now()
 }
 
-func NewRateLimiter(config *config.RateLimitConfig) *RateLimiter {
-	if config.CleanupInterval == 0 {
-		config.CleanupInterval = 5 * time.Minute
+func NewRateLimiter(securityConfig *config.SecurityConfig) *RateLimiter {
+	if securityConfig.RateLimit.CleanupInterval == 0 {
+		securityConfig.RateLimit.CleanupInterval = 5 * time.Minute
 	}
 
 	// Set a maximum cache size to prevent memory exhaustion during DDoS attacks
-	maxCacheSize := config.MaxCacheSize
-	if maxCacheSize == 0 {
-		maxCacheSize = 10000 // Default to 10,000 unique identifiers
+	if securityConfig.RateLimit.MaxCacheSize == 0 {
+		securityConfig.RateLimit.MaxCacheSize = 10000 // Default to 10,000 unique identifiers
 	}
 
 	rl := &RateLimiter{
-		limiters: cache.New(config.CleanupInterval, config.CleanupInterval*2),
-		config:   config,
-		clock:    RealClock{},
+		limiters:       cache.New(securityConfig.RateLimit.CleanupInterval, securityConfig.RateLimit.CleanupInterval*2),
+		securityConfig: securityConfig,
+		clock:          RealClock{},
 	}
 
 	// Set up periodic cleanup to enforce max cache size
-	go rl.periodicCleanup(maxCacheSize)
+	go rl.periodicCleanup()
 
 	return rl
 }
 
 // periodicCleanup periodically cleans up the cache to prevent memory exhaustion
-func (rl *RateLimiter) periodicCleanup(maxSize int) {
-	ticker := time.NewTicker(rl.config.CleanupInterval)
+func (rl *RateLimiter) periodicCleanup() {
+	ticker := time.NewTicker(rl.securityConfig.RateLimit.CleanupInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		currentSize := rl.limiters.ItemCount()
+		maxSize := rl.securityConfig.RateLimit.MaxCacheSize // Get maxSize from config
 		if currentSize <= maxSize {
 			continue // No cleanup needed
 		}
@@ -91,7 +91,7 @@ func (rl *RateLimiter) periodicCleanup(maxSize int) {
 }
 
 func (rl *RateLimiter) Allow(identifier string, limit *config.RateLimit) bool {
-	if !rl.config.Enabled {
+	if !rl.securityConfig.RateLimit.Enabled {
 		return true
 	}
 
@@ -113,7 +113,7 @@ func (rl *RateLimiter) Allow(identifier string, limit *config.RateLimit) bool {
 }
 
 func (rl *RateLimiter) GetRateLimitStatus(identifier string, limit *config.RateLimit) (*RateLimitStatus, error) {
-	if !rl.config.Enabled {
+	if !rl.securityConfig.RateLimit.Enabled {
 		return &RateLimitStatus{
 			Limit:      limit.RequestsPerSecond,
 			Remaining:  limit.BurstSize,
@@ -166,9 +166,39 @@ type RateLimitStatus struct {
 	RetryAfter time.Duration `json:"retry_after,omitempty"`
 }
 
+func (rl *RateLimiter) sendRateLimitResponse(w http.ResponseWriter, _ *http.Request, identifier string, limit *config.RateLimit) {
+	status, err := rl.GetRateLimitStatus(identifier, limit)
+	if err != nil {
+		status = &RateLimitStatus{RetryAfter: limit.WindowSize}
+	}
+
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+	w.Header().Set(constants.HeaderXRateLimitLimit, strconv.Itoa(status.Limit))
+	w.Header().Set(constants.HeaderXRateLimitRemaining, strconv.Itoa(status.Remaining))
+	w.Header().Set(constants.HeaderXRateLimitReset, strconv.FormatInt(status.Reset.Unix(), 10))
+
+	if status.RetryAfter > 0 {
+		w.Header().Set(constants.HeaderRetryAfter, strconv.Itoa(int(status.RetryAfter.Seconds())))
+	}
+
+	w.WriteHeader(constants.StatusTooManyRequests)
+
+	response := map[string]interface{}{
+		"error":       constants.ErrorCodeRateLimitExceeded,
+		"message":     fmt.Sprintf("Rate limit exceeded. Try again in %v", status.RetryAfter),
+		"code":        constants.ErrorCodeRateLimitExceeded,
+		"retry_after": int(status.RetryAfter.Seconds()),
+	}
+	jsonResponse, _ := json.Marshal(response)
+	_, err = w.Write(jsonResponse)
+	if err != nil {
+		return
+	}
+}
+
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !rl.config.Enabled {
+		if !rl.securityConfig.RateLimit.Enabled {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -179,77 +209,78 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Get identifier based on strategy
-		identifier := rl.getIdentifier(r)
+		// Layered Rate Limiting - Onion Model (API Key → IP → Global)
+		var (
+			effectiveLimit *config.RateLimit
+			identifier     string
+		)
 
-		// Get applicable rate limit
-		limit := rl.getRateLimit(identifier)
-
-		// Check rate limit
-		if !rl.Allow(identifier, limit) {
-			status, err := rl.GetRateLimitStatus(identifier, limit)
-			if err != nil {
-				status = &RateLimitStatus{RetryAfter: limit.WindowSize}
+		// 1. API Key Rate Limit (highest priority - if strategy includes API key and request has API key)
+		apiKey := rl.getAPIKeyFromRequest(r)
+		if apiKey != "" && (rl.securityConfig.RateLimit.Strategy == constants.RateLimitStrategyAPIKey) {
+			if limit, exists := rl.securityConfig.RateLimit.ByAPIKey[apiKey]; exists && limit != nil {
+				if !rl.Allow("api_key:"+apiKey, limit) {
+					rl.sendRateLimitResponse(w, r, "api_key:"+apiKey, limit)
+					return
+				}
+				effectiveLimit = limit
+				identifier = "api_key:" + apiKey
 			}
+		}
 
-			w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+		// 2. IP Rate Limit (medium priority - if strategy includes IP)
+		if rl.securityConfig.RateLimit.Strategy == constants.RateLimitStrategyIP {
+			ip := rl.getClientIP(r)
+			if rl.securityConfig.RateLimit.ByIP != nil {
+				if !rl.Allow("ip:"+ip, rl.securityConfig.RateLimit.ByIP) {
+					rl.sendRateLimitResponse(w, r, "ip:"+ip, rl.securityConfig.RateLimit.ByIP)
+					return
+				}
+				// Only set effective limit if no API key limit was applied
+				if effectiveLimit == nil {
+					effectiveLimit = rl.securityConfig.RateLimit.ByIP
+					identifier = "ip:" + ip
+				}
+			}
+		}
+
+		// 3. Global Rate Limit (lowest priority - always checked as safety net)
+		if rl.securityConfig.RateLimit.Global != nil {
+			if !rl.Allow("global", rl.securityConfig.RateLimit.Global) {
+				rl.sendRateLimitResponse(w, r, "global", rl.securityConfig.RateLimit.Global)
+				return
+			}
+			// Only set effective limit if no more specific limit was applied
+			if effectiveLimit == nil {
+				effectiveLimit = rl.securityConfig.RateLimit.Global
+				identifier = "global"
+			}
+		}
+
+		// Set rate limit headers based on the most specific limit that was applied
+		if effectiveLimit != nil {
+			status, _ := rl.GetRateLimitStatus(identifier, effectiveLimit)
 			w.Header().Set(constants.HeaderXRateLimitLimit, strconv.Itoa(status.Limit))
 			w.Header().Set(constants.HeaderXRateLimitRemaining, strconv.Itoa(status.Remaining))
 			w.Header().Set(constants.HeaderXRateLimitReset, strconv.FormatInt(status.Reset.Unix(), 10))
-
-			if status.RetryAfter > 0 {
-				w.Header().Set(constants.HeaderRetryAfter, strconv.Itoa(int(status.RetryAfter.Seconds())))
-			}
-
-			w.WriteHeader(constants.StatusTooManyRequests)
-
-			response := map[string]interface{}{
-				"error":       constants.ErrorCodeRateLimitExceeded,
-				"message":     fmt.Sprintf("Rate limit exceeded. Try again in %v", status.RetryAfter),
-				"code":        constants.ErrorCodeRateLimitExceeded,
-				"retry_after": int(status.RetryAfter.Seconds()),
-			}
-			jsonResponse, _ := json.Marshal(response)
-			_, err = w.Write(jsonResponse)
-			if err != nil {
-				return
-			}
-			return
 		}
-
-		// Add rate limit headers
-		status, _ := rl.GetRateLimitStatus(identifier, limit)
-		w.Header().Set(constants.HeaderXRateLimitLimit, strconv.Itoa(status.Limit))
-		w.Header().Set(constants.HeaderXRateLimitRemaining, strconv.Itoa(status.Remaining))
-		w.Header().Set(constants.HeaderXRateLimitReset, strconv.FormatInt(status.Reset.Unix(), 10))
 
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (rl *RateLimiter) getIdentifier(r *http.Request) string {
-	switch rl.config.Strategy {
-	case constants.RateLimitStrategyAPIKey:
-		if apiKey := r.Header.Get(constants.HeaderXAPIKey); apiKey != "" {
-			return "api_key:" + apiKey
+func (rl *RateLimiter) getAPIKeyFromRequest(r *http.Request) string {
+	if rl.securityConfig.Auth.HeaderName != "" {
+		if apiKey := r.Header.Get(rl.securityConfig.Auth.HeaderName); apiKey != "" {
+			return apiKey
 		}
-		if apiKey := r.URL.Query().Get(constants.RateLimitStrategyAPIKey); apiKey != "" {
-			return "api_key:" + apiKey
-		}
-	case constants.RateLimitStrategyBoth:
-		// Combine API key and IP
-		identifier := "ip:" + rl.getClientIP(r)
-		if apiKey := r.Header.Get(constants.HeaderXAPIKey); apiKey != "" {
-			identifier += "|api_key:" + apiKey
-		} else if apiKey := r.URL.Query().Get(constants.RateLimitStrategyAPIKey); apiKey != "" {
-			identifier += "|api_key:" + apiKey
-		}
-		return identifier
-	default: // constants.RateLimitStrategyIP
-		return "ip:" + rl.getClientIP(r)
 	}
-
-	return "ip:" + rl.getClientIP(r)
+	if rl.securityConfig.Auth.QueryParamName != "" {
+		if apiKey := r.URL.Query().Get(rl.securityConfig.Auth.QueryParamName); apiKey != "" {
+			return apiKey
+		}
+	}
+	return ""
 }
 
 func (rl *RateLimiter) getClientIP(r *http.Request) string {
@@ -274,38 +305,6 @@ func (rl *RateLimiter) getClientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return host
-}
-
-func (rl *RateLimiter) getRateLimit(identifier string) *config.RateLimit {
-	// Check for API key specific limits
-	if strings.HasPrefix(identifier, "api_key:") {
-		key := strings.TrimPrefix(identifier, "api_key:")
-		if limit, exists := rl.config.ByAPIKey[key]; exists {
-			return &config.RateLimit{
-				RequestsPerSecond: limit.RequestsPerSecond,
-				BurstSize:         limit.BurstSize,
-				WindowSize:        limit.WindowSize,
-			}
-		}
-	}
-
-	// Check for IP specific limits
-	if strings.HasPrefix(identifier, "ip:") {
-		if rl.config.ByIP != nil {
-			return &config.RateLimit{
-				RequestsPerSecond: rl.config.ByIP.RequestsPerSecond,
-				BurstSize:         rl.config.ByIP.BurstSize,
-				WindowSize:        rl.config.ByIP.WindowSize,
-			}
-		}
-	}
-
-	// Use global limits
-	return &config.RateLimit{
-		RequestsPerSecond: rl.config.Global.RequestsPerSecond,
-		BurstSize:         rl.config.Global.BurstSize,
-		WindowSize:        rl.config.Global.WindowSize,
-	}
 }
 
 func (rl *RateLimiter) shouldSkipRateLimit(path string) bool {

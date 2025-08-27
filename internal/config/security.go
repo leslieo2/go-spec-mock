@@ -18,11 +18,11 @@ type SecurityConfig struct {
 
 // AuthConfig contains authentication configuration
 type AuthConfig struct {
-	Enabled        bool             `json:"enabled" yaml:"enabled"`
-	HeaderName     string           `json:"header_name" yaml:"header_name"`
-	QueryParamName string           `json:"query_param_name" yaml:"query_param_name"`
-	Keys           []APIKeyConfig   `json:"keys" yaml:"keys"`
-	RateLimit      *GlobalRateLimit `json:"rate_limit" yaml:"rate_limit"`
+	Enabled        bool           `json:"enabled" yaml:"enabled"`
+	HeaderName     string         `json:"header_name" yaml:"header_name"`
+	QueryParamName string         `json:"query_param_name" yaml:"query_param_name"`
+	Keys           []APIKeyConfig `json:"keys" yaml:"keys"`
+	RateLimit      *RateLimit     `json:"rate_limit" yaml:"rate_limit"`
 }
 
 // APIKeyConfig represents an API key configuration
@@ -38,8 +38,8 @@ type APIKeyConfig struct {
 // RateLimitConfig contains rate limiting configuration
 type RateLimitConfig struct {
 	Enabled         bool                  `json:"enabled" yaml:"enabled"`
-	Strategy        string                `json:"strategy" yaml:"strategy"` // "api_key", "ip", "both"
-	Global          *GlobalRateLimit      `json:"global" yaml:"global"`
+	Strategy        string                `json:"strategy" yaml:"strategy"` // "api_key", "ip"
+	Global          *RateLimit            `json:"global" yaml:"global"`
 	ByAPIKey        map[string]*RateLimit `json:"by_api_key" yaml:"by_api_key"`
 	ByIP            *RateLimit            `json:"by_ip" yaml:"by_ip"`
 	CleanupInterval time.Duration         `json:"cleanup_interval" yaml:"cleanup_interval"`
@@ -53,12 +53,13 @@ type RateLimit struct {
 	WindowSize        time.Duration `json:"window_size" yaml:"window_size"`
 }
 
-// GlobalRateLimit contains global rate limit settings
-type GlobalRateLimit struct {
-	Enabled           bool          `json:"enabled" yaml:"enabled"`
-	RequestsPerSecond int           `json:"requests_per_second" yaml:"requests_per_second"`
-	BurstSize         int           `json:"burst_size" yaml:"burst_size"`
-	WindowSize        time.Duration `json:"window_size" yaml:"window_size"`
+// DefaultRateLimit returns default rate limit configuration for a specific entity
+func DefaultRateLimit() *RateLimit {
+	return &RateLimit{
+		RequestsPerSecond: 60,
+		BurstSize:         120,
+		WindowSize:        time.Minute,
+	}
 }
 
 // SecurityHeaders contains security headers configuration
@@ -105,8 +106,7 @@ func DefaultRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
 		Enabled:  true,
 		Strategy: constants.RateLimitStrategyIP,
-		Global: &GlobalRateLimit{
-			Enabled:           true,
+		Global: &RateLimit{
 			RequestsPerSecond: 100,
 			BurstSize:         200,
 			WindowSize:        time.Minute,
@@ -194,8 +194,8 @@ func (r *RateLimitConfig) Validate() error {
 	var errs []error
 
 	if r.Enabled {
-		if r.Strategy != constants.RateLimitStrategyIP && r.Strategy != constants.RateLimitStrategyAPIKey && r.Strategy != constants.RateLimitStrategyBoth {
-			errs = append(errs, errors.New("strategy must be one of: ip, api_key, both"))
+		if r.Strategy != constants.RateLimitStrategyIP && r.Strategy != constants.RateLimitStrategyAPIKey {
+			errs = append(errs, errors.New("strategy must be one of: ip, api_key"))
 		}
 
 		if r.Global != nil {
@@ -243,22 +243,6 @@ func (h *SecurityHeaders) Validate() error {
 	if h.Enabled {
 		if h.HSTSMaxAge < 0 {
 			return fmt.Errorf("hsts_max_age must be non-negative")
-		}
-	}
-	return nil
-}
-
-// Validate validates the global rate limit configuration
-func (g *GlobalRateLimit) Validate() error {
-	if g.Enabled {
-		if g.RequestsPerSecond <= 0 {
-			return fmt.Errorf("requests_per_second must be positive")
-		}
-		if g.BurstSize <= 0 {
-			return fmt.Errorf("burst_size must be positive")
-		}
-		if g.WindowSize <= 0 {
-			return fmt.Errorf("window_size must be positive")
 		}
 	}
 	return nil

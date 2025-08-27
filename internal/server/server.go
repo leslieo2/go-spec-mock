@@ -94,7 +94,7 @@ func New(cfg *config.Config) (*Server, error) {
 
 	// Initialize security
 	authManager := security.NewAuthManager(&cfg.Security.Auth)
-	rateLimiter := security.NewRateLimiter(&cfg.Security.RateLimit)
+	rateLimiter := security.NewRateLimiter(&cfg.Security)
 
 	// Pre-build routes and route map
 	routes := p.GetRoutes()

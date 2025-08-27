@@ -122,6 +122,8 @@ curl "http://localhost:8080/users?__statusCode=500"
 
 ## ⚙️ Configuration
 
+For a comprehensive, grouped overview of all configuration options, including their YAML/JSON keys, CLI flags, environment variables, and default values, please refer to the [Full Configuration Documentation](CONFIGURATION.md).
+
 ### Quick Reference
 
 **Essential flags:**
@@ -285,7 +287,7 @@ Enable with `--rate-limit-enabled`. The server returns standard `X-RateLimit-*` 
 security:
   rate_limit:
     enabled: true
-    strategy: "both" # ip, api_key, or both
+    strategy: "ip" # ip, api_key
     global:
       requests_per_second: 100
       burst_size: 200
@@ -474,7 +476,7 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 - [x] Configurable log levels (DEBUG, INFO, WARN, ERROR)
 - [x] Comprehensive security configuration (YAML/JSON)
 - [x] API key authentication with role-based access
-- [x] Rate limiting by IP, API key, or both
+- [x] Rate limiting by IP, API key
 - [x] CORS configuration with security headers
 - [ ] Sensitive data masking in logs
 

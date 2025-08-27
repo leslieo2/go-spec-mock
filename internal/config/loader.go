@@ -56,21 +56,14 @@ type CLIFlags struct {
 	Port              *string
 	MetricsPort       *string
 	SpecFile          *string
-	ReadTimeout       *time.Duration
-	WriteTimeout      *time.Duration
-	IdleTimeout       *time.Duration
-	MaxRequestSize    *int64
-	ShutdownTimeout   *time.Duration
 	AuthEnabled       *bool
 	RateLimitEnabled  *bool
 	RateLimitStrategy *string
 	RateLimitRPS      *int
 	GenerateKey       *string
 	HotReload         *bool
-	HotReloadDebounce *time.Duration
 	ProxyEnabled      *bool
 	ProxyTarget       *string
-	ProxyTimeout      *time.Duration
 	TLSEnabled        *bool
 	TLSCertFile       *string
 	TLSKeyFile        *string
@@ -208,21 +201,6 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	if flags.MetricsPort != nil && isFlagSet("metrics-port") && *flags.MetricsPort != "" {
 		config.Server.MetricsPort = *flags.MetricsPort
 	}
-	if flags.ReadTimeout != nil && isFlagSet("read-timeout") {
-		config.Server.ReadTimeout = *flags.ReadTimeout
-	}
-	if flags.WriteTimeout != nil && isFlagSet("write-timeout") {
-		config.Server.WriteTimeout = *flags.WriteTimeout
-	}
-	if flags.IdleTimeout != nil && isFlagSet("idle-timeout") {
-		config.Server.IdleTimeout = *flags.IdleTimeout
-	}
-	if flags.MaxRequestSize != nil && isFlagSet("max-request-size") {
-		config.Server.MaxRequestSize = *flags.MaxRequestSize
-	}
-	if flags.ShutdownTimeout != nil && isFlagSet("shutdown-timeout") {
-		config.Server.ShutdownTimeout = *flags.ShutdownTimeout
-	}
 
 	// Security flags
 	if flags.AuthEnabled != nil && isFlagSet("auth-enabled") {
@@ -231,16 +209,14 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	if flags.RateLimitEnabled != nil && isFlagSet("rate-limit-enabled") {
 		config.Security.RateLimit.Enabled = *flags.RateLimitEnabled
 	}
-	if flags.RateLimitStrategy != nil && isFlagSet("rate-limit-strategy") {
+	if flags.RateLimitStrategy != nil && isFlagSet("rate-limit-strategy") && (*flags.RateLimitStrategy == constants.RateLimitStrategyIP || *flags.RateLimitStrategy == constants.RateLimitStrategyAPIKey) {
 		config.Security.RateLimit.Strategy = *flags.RateLimitStrategy
 	}
 	if flags.RateLimitRPS != nil && isFlagSet("rate-limit-rps") {
 		if config.Security.RateLimit.Global == nil {
-			config.Security.RateLimit.Global = &GlobalRateLimit{
-				RequestsPerSecond: *flags.RateLimitRPS,
-				BurstSize:         200,
-				WindowSize:        time.Minute,
-			}
+			// Use default global rate limit configuration and override RPS
+			config.Security.RateLimit.Global = DefaultRateLimit()
+			config.Security.RateLimit.Global.RequestsPerSecond = *flags.RateLimitRPS
 		} else {
 			config.Security.RateLimit.Global.RequestsPerSecond = *flags.RateLimitRPS
 		}
@@ -253,9 +229,6 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	if flags.HotReload != nil && isFlagSet("hot-reload") {
 		config.HotReload.Enabled = *flags.HotReload
 	}
-	if flags.HotReloadDebounce != nil && isFlagSet("hot-reload-debounce") {
-		config.HotReload.Debounce = *flags.HotReloadDebounce
-	}
 
 	// Proxy configuration
 	if flags.ProxyEnabled != nil && isFlagSet("proxy-enabled") {
@@ -263,9 +236,6 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 	if flags.ProxyTarget != nil && isFlagSet("proxy-target") && *flags.ProxyTarget != "" {
 		config.Proxy.Target = *flags.ProxyTarget
-	}
-	if flags.ProxyTimeout != nil && isFlagSet("proxy-timeout") {
-		config.Proxy.Timeout = *flags.ProxyTimeout
 	}
 
 	// TLS configuration

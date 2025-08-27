@@ -31,16 +31,16 @@ func (mc *MockClock) Advance(d time.Duration) {
 	mc.now = mc.now.Add(d)
 }
 
-func newTestRateLimiter(config *config.RateLimitConfig) (*RateLimiter, *MockClock) {
-	if config.CleanupInterval == 0 {
-		config.CleanupInterval = 5 * time.Minute
+func newTestRateLimiter(securityConfig *config.SecurityConfig) (*RateLimiter, *MockClock) {
+	if securityConfig.RateLimit.CleanupInterval == 0 {
+		securityConfig.RateLimit.CleanupInterval = 5 * time.Minute
 	}
 
 	mockClock := &MockClock{now: time.Now()}
 	rl := &RateLimiter{
-		limiters: cache.New(config.CleanupInterval, config.CleanupInterval*2),
-		config:   config,
-		clock:    mockClock,
+		limiters:       cache.New(securityConfig.RateLimit.CleanupInterval, securityConfig.RateLimit.CleanupInterval*2),
+		securityConfig: securityConfig,
+		clock:          mockClock,
 	}
 	// Do not start cleanup goroutine in tests
 	return rl, mockClock
@@ -56,7 +56,7 @@ func TestRateLimiter_Success(t *testing.T) {
 			WindowSize:        time.Second,
 		},
 	}
-	rl, _ := newTestRateLimiter(cfg)
+	rl, _ := newTestRateLimiter(&config.SecurityConfig{RateLimit: *cfg})
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.RemoteAddr = "192.0.2.1:12345"
@@ -83,7 +83,7 @@ func TestRateLimiter_Failure_Exceeded(t *testing.T) {
 			WindowSize:        time.Minute, // Use a long window to prevent reset during test
 		},
 	}
-	rl, _ := newTestRateLimiter(cfg)
+	rl, _ := newTestRateLimiter(&config.SecurityConfig{RateLimit: *cfg})
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -96,7 +96,7 @@ func TestRateLimiter_Failure_Exceeded(t *testing.T) {
 	middleware.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code, "Request #1 should succeed")
 
-	// Second request should fail (exceeds burst)
+	// Second request immediately - should fail
 	req = httptest.NewRequest("GET", "/", nil)
 	req.RemoteAddr = "192.0.2.2:12345"
 	rr = httptest.NewRecorder()
@@ -117,7 +117,7 @@ func TestRateLimiter_PerIP(t *testing.T) {
 			WindowSize:        time.Minute,
 		},
 	}
-	rl, _ := newTestRateLimiter(cfg)
+	rl, _ := newTestRateLimiter(&config.SecurityConfig{RateLimit: *cfg})
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -149,7 +149,7 @@ func TestRateLimiter_Disabled(t *testing.T) {
 	cfg := &config.RateLimitConfig{
 		Enabled: false, // Rate limiting is disabled
 	}
-	rl, _ := newTestRateLimiter(cfg)
+	rl, _ := newTestRateLimiter(&config.SecurityConfig{RateLimit: *cfg})
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -176,7 +176,7 @@ func TestRateLimiter_WindowReset(t *testing.T) {
 			WindowSize:        time.Second, // 1 second window
 		},
 	}
-	rl, _ := newTestRateLimiter(cfg)
+	rl, _ := newTestRateLimiter(&config.SecurityConfig{RateLimit: *cfg})
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -205,7 +205,7 @@ func TestRateLimiter_WindowReset(t *testing.T) {
 }
 
 func TestGetClientIP(t *testing.T) {
-	rl := &RateLimiter{}
+	rl := &RateLimiter{securityConfig: &config.SecurityConfig{}}
 
 	testCases := []struct {
 		name    string
@@ -257,7 +257,7 @@ func TestRateLimitStatusHeaders(t *testing.T) {
 			WindowSize:        time.Minute,
 		},
 	}
-	rl, clock := newTestRateLimiter(cfg)
+	rl, clock := newTestRateLimiter(&config.SecurityConfig{RateLimit: *cfg})
 
 	middleware := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

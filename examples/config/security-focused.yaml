@@ -26,7 +26,7 @@ security:
         enabled: true
   rate_limit:
     enabled: true
-    strategy: "both"  # Rate limit by both IP and API key
+    strategy: "IP"  # Rate limit by IP
     global:
       requests_per_second: 50
       burst_size: 100

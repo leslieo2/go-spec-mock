@@ -619,7 +619,7 @@ func TestDynamicHandler(t *testing.T) {
 	// Create initial handler
 	initialHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("initial"))
+		_, _ = w.Write([]byte("initial"))
 	})
 
 	// Create dynamic handler
@@ -640,7 +640,7 @@ func TestDynamicHandler(t *testing.T) {
 	// Update handler
 	newHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("updated"))
+		_, _ = w.Write([]byte("updated"))
 	})
 	dynamicHandler.UpdateHandler(newHandler)
 

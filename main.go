@@ -25,28 +25,21 @@ func main() {
 	host := pflag.String("host", "localhost", "Host to run the mock server on")
 	metricsPort := pflag.String("metrics-port", "9090", "Port to run the metrics server on")
 
-	// Server configuration
-	readTimeout := pflag.Duration("read-timeout", 15*time.Second, "HTTP server read timeout")
-	writeTimeout := pflag.Duration("write-timeout", 15*time.Second, "HTTP server write timeout")
-	idleTimeout := pflag.Duration("idle-timeout", 60*time.Second, "HTTP server idle timeout")
-	maxRequestSize := pflag.Int64("max-request-size", 10*1024*1024, "Maximum request size in bytes")
-	shutdownTimeout := pflag.Duration("shutdown-timeout", 30*time.Second, "Graceful shutdown timeout")
+	// Server configuration (timeouts and limits moved to config file/env vars only)
 
 	// Security flags
 	authEnabled := pflag.Bool("auth-enabled", false, "Enable API key authentication")
 	rateLimitEnabled := pflag.Bool("rate-limit-enabled", false, "Enable rate limiting")
-	rateLimitStrategy := pflag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key, both")
+	rateLimitStrategy := pflag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key")
 	rateLimitRPS := pflag.Int("rate-limit-rps", 100, "Global rate limit requests per second")
 	generateKey := pflag.String("generate-key", "", "Generate a new API key with given name")
 
 	// Hot reload flags
 	hotReload := pflag.Bool("hot-reload", true, "Enable hot reload for specification file")
-	hotReloadDebounce := pflag.Duration("hot-reload-debounce", 500*time.Millisecond, "Debounce time for hot reload events")
 
 	// Proxy flags
 	proxyEnabled := pflag.Bool("proxy-enabled", false, "Enable proxy mode for undefined endpoints")
 	proxyTarget := pflag.String("proxy-target", "", "Target server URL for proxy mode")
-	proxyTimeout := pflag.Duration("proxy-timeout", 30*time.Second, "Timeout for proxy requests")
 
 	// TLS flags
 	tlsEnabled := pflag.Bool("tls-enabled", false, "Enable HTTPS/TLS")
@@ -61,21 +54,14 @@ func main() {
 		Port:              port,
 		MetricsPort:       metricsPort,
 		SpecFile:          specFile,
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
-		MaxRequestSize:    maxRequestSize,
-		ShutdownTimeout:   shutdownTimeout,
 		AuthEnabled:       authEnabled,
 		RateLimitEnabled:  rateLimitEnabled,
 		RateLimitStrategy: rateLimitStrategy,
 		RateLimitRPS:      rateLimitRPS,
 		GenerateKey:       generateKey,
 		HotReload:         hotReload,
-		HotReloadDebounce: hotReloadDebounce,
 		ProxyEnabled:      proxyEnabled,
 		ProxyTarget:       proxyTarget,
-		ProxyTimeout:      proxyTimeout,
 		TLSEnabled:        tlsEnabled,
 		TLSCertFile:       tlsCertFile,
 		TLSKeyFile:        tlsKeyFile,
@@ -192,20 +178,14 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  -host\t\t\tHost to run the mock server on (default: localhost)\n")
 	fmt.Fprintf(os.Stderr, "  -port\t\t\tPort to run the mock server on (default: 8080)\n")
 	fmt.Fprintf(os.Stderr, "  -metrics-port\t\tPort to run the metrics server on (default: 9090)\n")
-	fmt.Fprintf(os.Stderr, "  -read-timeout\t\tHTTP server read timeout (default: 15s)\n")
-	fmt.Fprintf(os.Stderr, "  -write-timeout\tHTTP server write timeout (default: 15s)\n")
-	fmt.Fprintf(os.Stderr, "  -idle-timeout\t\tHTTP server idle timeout (default: 60s)\n")
-	fmt.Fprintf(os.Stderr, "  -max-request-size\tMaximum request size in bytes (default: 10485760)\n")
-	fmt.Fprintf(os.Stderr, "  -shutdown-timeout\tGraceful shutdown timeout (default: 30s)\n")
 	fmt.Fprintf(os.Stderr, "\nSecurity flags:\n")
 	fmt.Fprintf(os.Stderr, "  -auth-enabled\t\tEnable API key authentication (default: false)\n")
 	fmt.Fprintf(os.Stderr, "  -rate-limit-enabled\tEnable rate limiting (default: false)\n")
-	fmt.Fprintf(os.Stderr, "  -rate-limit-strategy\tRate limiting strategy: ip, api_key, both (default: ip)\n")
+	fmt.Fprintf(os.Stderr, "  -rate-limit-strategy\tRate limiting strategy: ip, api_key (default: ip)\n")
 	fmt.Fprintf(os.Stderr, "  -rate-limit-rps\t\tGlobal rate limit requests per second (default: 100)\n")
 	fmt.Fprintf(os.Stderr, "  -generate-key\t\tGenerate a new API key with given name\n")
 	fmt.Fprintf(os.Stderr, "\nHot reload flags:\n")
 	fmt.Fprintf(os.Stderr, "  -hot-reload\t\tEnable hot reload for specification file (default: true)\n")
-	fmt.Fprintf(os.Stderr, "  -hot-reload-debounce\tDebounce time for hot reload events (default: 500ms)\n")
 	fmt.Fprintf(os.Stderr, "\nEnvironment variables:\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_HOST, GO_SPEC_MOCK_PORT, GO_SPEC_MOCK_METRICS_PORT\n")
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_READ_TIMEOUT, GO_SPEC_MOCK_WRITE_TIMEOUT, GO_SPEC_MOCK_IDLE_TIMEOUT\n")

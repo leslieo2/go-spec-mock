@@ -97,7 +97,6 @@ const (
 const (
 	RateLimitStrategyIP     = "ip"
 	RateLimitStrategyAPIKey = "api_key"
-	RateLimitStrategyBoth   = "both"
 )
 
 // Rate limiting headers

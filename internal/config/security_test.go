@@ -55,9 +55,10 @@ func TestAuthConfig_Validate(t *testing.T) {
 			config: AuthConfig{
 				Enabled:    true,
 				HeaderName: "X-API-Key",
-				RateLimit: &GlobalRateLimit{
-					Enabled:           true,
-					RequestsPerSecond: 0, // Invalid
+				RateLimit: &RateLimit{ // Changed to RateLimit
+					RequestsPerSecond: 0,           // Invalid
+					BurstSize:         1,           // Added to satisfy RateLimit validation
+					WindowSize:        time.Minute, // Added to satisfy RateLimit validation
 				},
 			},
 			wantErr: true,
@@ -105,9 +106,10 @@ func TestRateLimitConfig_Validate(t *testing.T) {
 			config: RateLimitConfig{
 				Enabled:  true,
 				Strategy: "ip",
-				Global: &GlobalRateLimit{
-					Enabled:           true,
-					RequestsPerSecond: 0, // Invalid
+				Global: &RateLimit{ // Changed to RateLimit
+					RequestsPerSecond: 0,           // Invalid
+					BurstSize:         1,           // Added to satisfy RateLimit validation
+					WindowSize:        time.Minute, // Added to satisfy RateLimit validation
 				},
 			},
 			wantErr: true,
@@ -226,71 +228,6 @@ func TestSecurityHeaders_Validate(t *testing.T) {
 			err := tt.config.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SecurityHeaders.Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestGlobalRateLimit_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  GlobalRateLimit
-		wantErr bool
-	}{
-		{
-			name: "Valid GlobalRateLimit Enabled",
-			config: GlobalRateLimit{
-				Enabled:           true,
-				RequestsPerSecond: 100,
-				BurstSize:         200,
-				WindowSize:        time.Minute,
-			},
-			wantErr: false,
-		},
-		{
-			name: "Valid GlobalRateLimit Disabled",
-			config: GlobalRateLimit{
-				Enabled: false,
-			},
-			wantErr: false,
-		},
-		{
-			name: "Enabled with Zero RequestsPerSecond",
-			config: GlobalRateLimit{
-				Enabled:           true,
-				RequestsPerSecond: 0,
-				BurstSize:         200,
-				WindowSize:        time.Minute,
-			},
-			wantErr: true,
-		},
-		{
-			name: "Enabled with Zero BurstSize",
-			config: GlobalRateLimit{
-				Enabled:           true,
-				RequestsPerSecond: 100,
-				BurstSize:         0,
-				WindowSize:        time.Minute,
-			},
-			wantErr: true,
-		},
-		{
-			name: "Enabled with Zero WindowSize",
-			config: GlobalRateLimit{
-				Enabled:           true,
-				RequestsPerSecond: 100,
-				BurstSize:         200,
-				WindowSize:        0,
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GlobalRateLimit.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/hotreload"
-	"github.com/leslieo2/go-spec-mock/internal/security"
 	"github.com/leslieo2/go-spec-mock/internal/server"
 	"github.com/spf13/pflag"
 )
@@ -28,10 +26,8 @@ func main() {
 	// Server configuration (timeouts and limits moved to config file/env vars only)
 
 	// Security flags
-	authEnabled := pflag.Bool("auth-enabled", false, "Enable API key authentication")
 	rateLimitEnabled := pflag.Bool("rate-limit-enabled", false, "Enable rate limiting")
 	rateLimitStrategy := pflag.String("rate-limit-strategy", constants.RateLimitStrategyIP, "Rate limiting strategy: ip, api_key")
-	generateKey := pflag.String("generate-key", "", "Generate a new API key with given name")
 
 	// Hot reload flags
 	hotReload := pflag.Bool("hot-reload", true, "Enable hot reload for specification file")
@@ -53,10 +49,8 @@ func main() {
 		Port:              port,
 		MetricsPort:       metricsPort,
 		SpecFile:          specFile,
-		AuthEnabled:       authEnabled,
 		RateLimitEnabled:  rateLimitEnabled,
 		RateLimitStrategy: rateLimitStrategy,
-		GenerateKey:       generateKey,
 		HotReload:         hotReload,
 		ProxyEnabled:      proxyEnabled,
 		ProxyTarget:       proxyTarget,
@@ -71,41 +65,17 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Skip validation for help and version flags
-	if *generateKey != "" {
-		// Handle key generation without validation
-	} else {
-		// Validate configuration and spec file
-		if cfg.SpecFile == "" {
-			fmt.Fprintf(os.Stderr, "Error: OpenAPI spec file is required\n\n")
-			printUsage()
-			os.Exit(1)
-		}
-		if _, err := os.Stat(cfg.SpecFile); os.IsNotExist(err) {
-			log.Fatalf("OpenAPI spec file not found: %s", cfg.SpecFile)
-		}
-		if err := cfg.Validate(); err != nil {
-			log.Fatalf("Invalid configuration: %v", err)
-		}
+	// Validate configuration and spec file
+	if cfg.SpecFile == "" {
+		fmt.Fprintf(os.Stderr, "Error: OpenAPI spec file is required\n\n")
+		printUsage()
+		os.Exit(1)
 	}
-
-	// Handle key generation
-	if *generateKey != "" {
-		authManager := security.NewAuthManager(&cfg.Security.Auth)
-		apiKey, err := authManager.GenerateAPIKey(*generateKey)
-		if err != nil {
-			log.Fatalf("Failed to generate API key: %v", err)
-		}
-
-		fmt.Printf("Generated API key for '%s':\n", *generateKey)
-		fmt.Printf("Key: %s\n", apiKey.Key)
-		fmt.Printf("Created: %s\n", apiKey.CreatedAt.Format(time.RFC3339))
-		fmt.Printf("\nAdd this to your security configuration:\n")
-		fmt.Printf("keys:\n")
-		fmt.Printf("  - key: %s\n", apiKey.Key)
-		fmt.Printf("    name: %s\n", apiKey.Name)
-		fmt.Printf("    enabled: true\n")
-		os.Exit(0)
+	if _, err := os.Stat(cfg.SpecFile); os.IsNotExist(err) {
+		log.Fatalf("OpenAPI spec file not found: %s", cfg.SpecFile)
+	}
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Invalid configuration: %v", err)
 	}
 
 	// Create mock server with configuration
@@ -144,9 +114,6 @@ func main() {
 	}
 
 	log.Printf("Starting mock server for %s on %s:%s", cfg.SpecFile, cfg.Server.Host, cfg.Server.Port)
-	if cfg.Security.Auth.Enabled {
-		log.Printf("API key authentication enabled")
-	}
 	if cfg.Security.RateLimit.Enabled {
 		log.Printf("Rate limiting enabled (strategy: %s)",
 			cfg.Security.RateLimit.Strategy)

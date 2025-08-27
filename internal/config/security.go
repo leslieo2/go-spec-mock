@@ -10,29 +10,9 @@ import (
 
 // SecurityConfig contains security-related configuration
 type SecurityConfig struct {
-	Auth      AuthConfig      `json:"auth" yaml:"auth"`
 	RateLimit RateLimitConfig `json:"rate_limit" yaml:"rate_limit"`
 	Headers   SecurityHeaders `json:"headers" yaml:"headers"`
 	CORS      CORSConfig      `json:"cors" yaml:"cors"`
-}
-
-// AuthConfig contains authentication configuration
-type AuthConfig struct {
-	Enabled        bool           `json:"enabled" yaml:"enabled"`
-	HeaderName     string         `json:"header_name" yaml:"header_name"`
-	QueryParamName string         `json:"query_param_name" yaml:"query_param_name"`
-	Keys           []APIKeyConfig `json:"keys" yaml:"keys"`
-	RateLimit      *RateLimit     `json:"rate_limit" yaml:"rate_limit"`
-}
-
-// APIKeyConfig represents an API key configuration
-type APIKeyConfig struct {
-	Key       string            `json:"key" yaml:"key"`
-	Name      string            `json:"name" yaml:"name"`
-	Enabled   bool              `json:"enabled" yaml:"enabled"`
-	CreatedAt time.Time         `json:"created_at" yaml:"created_at"`
-	ExpiresAt *time.Time        `json:"expires_at,omitempty" yaml:"expires_at,omitempty"`
-	Metadata  map[string]string `json:"metadata" yaml:"metadata"`
 }
 
 // RateLimitConfig contains rate limiting configuration
@@ -79,21 +59,9 @@ type CORSConfig struct {
 // DefaultSecurityConfig returns default security configuration
 func DefaultSecurityConfig() SecurityConfig {
 	return SecurityConfig{
-		Auth:      DefaultAuthConfig(),
 		RateLimit: DefaultRateLimitConfig(),
 		Headers:   DefaultSecurityHeaders(),
 		CORS:      DefaultCORSConfig(),
-	}
-}
-
-// DefaultAuthConfig returns default authentication configuration
-func DefaultAuthConfig() AuthConfig {
-	return AuthConfig{
-		Enabled:        false,
-		HeaderName:     constants.HeaderXAPIKey,
-		QueryParamName: constants.ContextKeyAPIKeyStr,
-		Keys:           []APIKeyConfig{},
-		RateLimit:      nil,
 	}
 }
 
@@ -140,9 +108,6 @@ func DefaultCORSConfig() CORSConfig {
 func (s *SecurityConfig) Validate() error {
 	var errs []error
 
-	if err := s.Auth.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("auth config validation failed: %w", err))
-	}
 	if err := s.RateLimit.Validate(); err != nil {
 		errs = append(errs, fmt.Errorf("rate limit config validation failed: %w", err))
 	}
@@ -151,28 +116,6 @@ func (s *SecurityConfig) Validate() error {
 	}
 	if err := s.CORS.Validate(); err != nil {
 		errs = append(errs, fmt.Errorf("CORS config validation failed: %w", err))
-	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return nil
-}
-
-// Validate validates the authentication configuration
-func (a *AuthConfig) Validate() error {
-	var errs []error
-
-	if a.Enabled {
-		if a.HeaderName == "" && a.QueryParamName == "" {
-			errs = append(errs, errors.New("either header_name or query_param_name must be set"))
-		}
-	}
-
-	if a.RateLimit != nil {
-		if err := a.RateLimit.Validate(); err != nil {
-			errs = append(errs, fmt.Errorf("auth rate limit validation failed: %w", err))
-		}
 	}
 
 	if len(errs) > 0 {

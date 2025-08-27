@@ -5,25 +5,9 @@ server:
   host: "localhost"
   port: "8080"
   metrics_port: "9090"
-  read_timeout: "30s"
-  write_timeout: "30s"
-  idle_timeout: "60s"
-  max_request_size: 5242880  # 5MB (smaller for security)
-  shutdown_timeout: "30s"
 
 # Comprehensive security configuration
 security:
-  auth:
-    enabled: true
-    header_name: "Authorization"
-    query_param_name: "api_key"
-    keys:
-      - key: "admin-key-secure"
-        name: "admin"
-        enabled: true
-      - key: "readonly-key-secure"
-        name: "readonly"
-        enabled: true
   rate_limit:
     enabled: true
     strategy: "IP"  # Rate limit by IP
@@ -46,9 +30,7 @@ security:
         window_size: "1m"
   headers:
     enabled: true
-    content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
     hsts_max_age: 31536000
-    allowed_hosts: ["localhost", "127.0.0.1"]
   cors:
     enabled: true
     allowed_origins: ["https://localhost:3000", "https://127.0.0.1:3000"]

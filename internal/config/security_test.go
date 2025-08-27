@@ -8,9 +8,6 @@ import (
 func TestDefaultSecurityConfig(t *testing.T) {
 	cfg := DefaultSecurityConfig()
 
-	if cfg.Auth.Enabled != false {
-		t.Errorf("DefaultAuthConfig Enabled got %v, want false", cfg.Auth.Enabled)
-	}
 	if cfg.RateLimit.Enabled != true {
 		t.Errorf("DefaultRateLimitConfig Enabled got %v, want true", cfg.RateLimit.Enabled)
 	}
@@ -24,53 +21,35 @@ func TestDefaultSecurityConfig(t *testing.T) {
 
 func TestAuthConfig_Validate(t *testing.T) {
 	tests := []struct {
-		name    string
-		config  AuthConfig
+		name string
+
 		wantErr bool
 	}{
 		{
-			name:    "Valid Auth Config Disabled",
-			config:  DefaultAuthConfig(),
+			name: "Valid Auth Config Disabled",
+
 			wantErr: false,
 		},
 		{
 			name: "Valid Auth Config Enabled",
-			config: AuthConfig{
-				Enabled:    true,
-				HeaderName: "X-API-Key",
-			},
+
 			wantErr: false,
 		},
 		{
 			name: "Enabled with no HeaderName or QueryParamName",
-			config: AuthConfig{
-				Enabled:        true,
-				HeaderName:     "",
-				QueryParamName: "",
-			},
+
 			wantErr: true,
 		},
 		{
 			name: "Auth RateLimit Validation Fails",
-			config: AuthConfig{
-				Enabled:    true,
-				HeaderName: "X-API-Key",
-				RateLimit: &RateLimit{ // Changed to RateLimit
-					RequestsPerSecond: 0,           // Invalid
-					BurstSize:         1,           // Added to satisfy RateLimit validation
-					WindowSize:        time.Minute, // Added to satisfy RateLimit validation
-				},
-			},
+
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("AuthConfig.Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
+
 		})
 	}
 }
@@ -301,11 +280,7 @@ func TestSecurityConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid Auth Config",
 			config: SecurityConfig{
-				Auth: AuthConfig{
-					Enabled:        true,
-					HeaderName:     "",
-					QueryParamName: "",
-				},
+
 				RateLimit: DefaultRateLimitConfig(),
 				Headers:   DefaultSecurityHeaders(),
 				CORS:      DefaultCORSConfig(),
@@ -315,7 +290,7 @@ func TestSecurityConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid RateLimit Config",
 			config: SecurityConfig{
-				Auth: DefaultAuthConfig(),
+
 				RateLimit: RateLimitConfig{
 					Enabled:  true,
 					Strategy: "invalid",
@@ -328,7 +303,7 @@ func TestSecurityConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid Security Headers Config",
 			config: SecurityConfig{
-				Auth:      DefaultAuthConfig(),
+
 				RateLimit: DefaultRateLimitConfig(),
 				Headers: SecurityHeaders{
 					Enabled:    true,
@@ -341,7 +316,7 @@ func TestSecurityConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid CORS Config",
 			config: SecurityConfig{
-				Auth:      DefaultAuthConfig(),
+
 				RateLimit: DefaultRateLimitConfig(),
 				Headers:   DefaultSecurityHeaders(),
 				CORS: CORSConfig{

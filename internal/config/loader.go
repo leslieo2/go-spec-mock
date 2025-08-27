@@ -56,10 +56,8 @@ type CLIFlags struct {
 	Port              *string
 	MetricsPort       *string
 	SpecFile          *string
-	AuthEnabled       *bool
 	RateLimitEnabled  *bool
 	RateLimitStrategy *string
-	GenerateKey       *string
 	HotReload         *bool
 	ProxyEnabled      *bool
 	ProxyTarget       *string
@@ -177,9 +175,6 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 
 	// Security flags
-	if flags.AuthEnabled != nil && isFlagSet("auth-enabled") {
-		config.Security.Auth.Enabled = *flags.AuthEnabled
-	}
 	if flags.RateLimitEnabled != nil && isFlagSet("rate-limit-enabled") {
 		config.Security.RateLimit.Enabled = *flags.RateLimitEnabled
 	}
@@ -243,9 +238,6 @@ func mergeConfig(base *Config, file *Config) {
 	}
 
 	// Merge security configuration
-	if file.Security.Auth.Enabled != base.Security.Auth.Enabled {
-		base.Security.Auth = file.Security.Auth
-	}
 	if file.Security.RateLimit.Enabled != base.Security.RateLimit.Enabled {
 		base.Security.RateLimit = file.Security.RateLimit
 	}

@@ -356,18 +356,6 @@ func Test_overrideWithCLI(t *testing.T) {
 			}(),
 		},
 		{
-			name:       "Override AuthEnabled",
-			initialCfg: DefaultConfig(),
-			cliFlags: &CLIFlags{
-				AuthEnabled: boolPtr(true),
-			},
-			expectedCfg: func() *Config {
-				cfg := DefaultConfig()
-				cfg.Security.Auth.Enabled = true
-				return cfg
-			}(),
-		},
-		{
 			name:       "Test GlobalRateLimit initialization",
 			initialCfg: DefaultConfig(),
 			cliFlags:   &CLIFlags{},
@@ -429,9 +417,6 @@ func Test_overrideWithCLI(t *testing.T) {
 			if cfg.Server.Port != tt.expectedCfg.Server.Port {
 				t.Errorf("Port: got %s, want %s", cfg.Server.Port, tt.expectedCfg.Server.Port)
 			}
-			if cfg.Security.Auth.Enabled != tt.expectedCfg.Security.Auth.Enabled {
-				t.Errorf("AuthEnabled: got %v, want %v", cfg.Security.Auth.Enabled, tt.expectedCfg.Security.Auth.Enabled)
-			}
 			if (cfg.Security.RateLimit.Global == nil) != (tt.expectedCfg.Security.RateLimit.Global == nil) {
 				t.Errorf("GlobalRateLimit nil mismatch: got %v, want %v", cfg.Security.RateLimit.Global == nil, tt.expectedCfg.Security.RateLimit.Global == nil)
 			}
@@ -481,11 +466,10 @@ func Test_mergeConfig(t *testing.T) {
 			name:    "Merge Auth Enabled",
 			baseCfg: DefaultConfig(),
 			fileCfg: &Config{
-				Security: SecurityConfig{Auth: AuthConfig{Enabled: true}},
+				Security: SecurityConfig{},
 			},
 			expectedCfg: func() *Config {
 				cfg := DefaultConfig()
-				cfg.Security.Auth.Enabled = true
 				return cfg
 			}(),
 		},
@@ -540,9 +524,6 @@ func Test_mergeConfig(t *testing.T) {
 			// Deep compare relevant fields
 			if tt.baseCfg.Server.Port != tt.expectedCfg.Server.Port {
 				t.Errorf("Port: got %s, want %s", tt.baseCfg.Server.Port, tt.expectedCfg.Server.Port)
-			}
-			if tt.baseCfg.Security.Auth.Enabled != tt.expectedCfg.Security.Auth.Enabled {
-				t.Errorf("AuthEnabled: got %v, want %v", tt.baseCfg.Security.Auth.Enabled, tt.expectedCfg.Security.Auth.Enabled)
 			}
 			if tt.baseCfg.Observability.Logging.Level != tt.expectedCfg.Observability.Logging.Level {
 				t.Errorf("LoggingLevel: got %s, want %s", tt.baseCfg.Observability.Logging.Level, tt.expectedCfg.Observability.Logging.Level)

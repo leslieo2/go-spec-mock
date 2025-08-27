@@ -206,19 +206,6 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			identifier     string
 		)
 
-		// 1. API Key Rate Limit (highest priority - if strategy includes API key and request has API key)
-		apiKey := rl.getAPIKeyFromRequest(r)
-		if apiKey != "" && (rl.securityConfig.RateLimit.Strategy == constants.RateLimitStrategyAPIKey) {
-			if limit, exists := rl.securityConfig.RateLimit.ByAPIKey[apiKey]; exists && limit != nil {
-				if !rl.Allow("api_key:"+apiKey, limit) {
-					rl.sendRateLimitResponse(w, r, "api_key:"+apiKey, limit)
-					return
-				}
-				effectiveLimit = limit
-				identifier = "api_key:" + apiKey
-			}
-		}
-
 		// 2. IP Rate Limit (medium priority - if strategy includes IP)
 		if rl.securityConfig.RateLimit.Strategy == constants.RateLimitStrategyIP {
 			ip := rl.getClientIP(r)
@@ -258,20 +245,6 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func (rl *RateLimiter) getAPIKeyFromRequest(r *http.Request) string {
-	if rl.securityConfig.Auth.HeaderName != "" {
-		if apiKey := r.Header.Get(rl.securityConfig.Auth.HeaderName); apiKey != "" {
-			return apiKey
-		}
-	}
-	if rl.securityConfig.Auth.QueryParamName != "" {
-		if apiKey := r.URL.Query().Get(rl.securityConfig.Auth.QueryParamName); apiKey != "" {
-			return apiKey
-		}
-	}
-	return ""
 }
 
 func (rl *RateLimiter) getClientIP(r *http.Request) string {

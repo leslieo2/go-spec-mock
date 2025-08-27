@@ -52,7 +52,6 @@ const (
 const (
 	HeaderAuthorization  = "Authorization"
 	HeaderContentType    = "Content-Type"
-	HeaderXAPIKey        = "X-API-Key" // #nosec G101 - This is a header name constant, not a credential
 	HeaderAccept         = "Accept"
 	HeaderXRequestedWith = "X-Requested-With"
 	HeaderOrigin         = "Origin"
@@ -133,16 +132,11 @@ const (
 // Context key types
 
 // Context key constants
-const (
-	ContextKeyAPIKeyStr string = "api_key"
-)
+const ()
 
 // Error code constants
 const (
 	ErrorCodeUnauthorized      = "UNAUTHORIZED"
-	ErrorCodeInvalidAPIKey     = "INVALID_API_KEY" // #nosec G101 - This is an error code constant, not a credential
-	ErrorCodeAPIKeyExpired     = "API_KEY_EXPIRED" // #nosec G101 - This is an error code constant, not a credential
-	ErrorCodeAPIKeyDisabled    = "API_KEY_DISABLED"
 	ErrorCodeRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 )
 

@@ -57,7 +57,6 @@ type Server struct {
 	dynamicHandler *DynamicHandler
 
 	// Security
-	authManager *security.AuthManager
 	rateLimiter *security.RateLimiter
 
 	// Observability
@@ -87,7 +86,6 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	// Initialize security
-	authManager := security.NewAuthManager(&cfg.Security.Auth)
 	rateLimiter := security.NewRateLimiter(&cfg.Security)
 
 	// Pre-build routes and route map
@@ -103,7 +101,6 @@ func New(cfg *config.Config) (*Server, error) {
 		cache:       &sync.Map{},
 		routes:      routes,
 		routeMap:    routeMap,
-		authManager: authManager,
 		rateLimiter: rateLimiter,
 		logger:      logger,
 		metrics:     metrics,

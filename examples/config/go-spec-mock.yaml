@@ -6,27 +6,9 @@ server:
   host: "localhost"
   port: "8080"
   metrics_port: "9090"
-  read_timeout: "15s"
-  write_timeout: "15s"
-  idle_timeout: "60s"
-  max_request_size: 10485760  # 10MB
-  shutdown_timeout: "30s"
 
 # Security Configuration
 security:
-  auth:
-    enabled: false
-    header_name: "X-API-Key"
-    query_param_name: ""  # Alternative to header
-    keys:
-      - key: "your-secure-api-key-here"
-        name: "admin"
-        enabled: true
-        created_at: "2024-01-01T00:00:00Z"
-      - key: "another-key-here"
-        name: "readonly"
-        enabled: true
-        created_at: "2024-01-01T00:00:00Z"
   rate_limit:
     enabled: false
     strategy: "ip"  # "ip", "api_key"
@@ -45,9 +27,7 @@ security:
         window_size: "1m"
   headers:
     enabled: true
-    content_security_policy: "default-src 'self'"
     hsts_max_age: 31536000
-    allowed_hosts: []
   cors:
     enabled: true
     allowed_origins: ["*"]

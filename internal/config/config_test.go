@@ -16,9 +16,7 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Server == (ServerConfig{}) {
 		t.Error("DefaultConfig did not initialize ServerConfig")
 	}
-	if cfg.Security.Auth.Enabled != false { // Assuming Auth.Enabled is a default boolean
-		t.Error("DefaultConfig did not initialize SecurityConfig correctly")
-	}
+
 	if cfg.Observability == (ObservabilityConfig{}) {
 		t.Error("DefaultConfig did not initialize ObservabilityConfig")
 	}
@@ -57,15 +55,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid Security Config",
 			config: &Config{
-				Server: DefaultServerConfig(),
-				Security: SecurityConfig{
-					Auth: AuthConfig{
-						Enabled: true,
-						// APIKeys: nil, // Removed APIKeys as it's not in AuthConfig
-						HeaderName:     "", // Make it invalid by removing header/query param
-						QueryParamName: "",
-					},
-				},
+				Server:        DefaultServerConfig(),
+				Security:      SecurityConfig{},
 				Observability: DefaultObservabilityConfig(),
 				SpecFile:      "test.yaml",
 				TLS:           DefaultTLSConfig(),

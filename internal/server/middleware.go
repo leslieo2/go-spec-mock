@@ -37,11 +37,6 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 		handler = s.rateLimiter.Middleware(handler)
 	}
 
-	// API key authentication middleware
-	if s.authManager != nil {
-		handler = s.authManager.Middleware(handler)
-	}
-
 	// Request size limit middleware
 	handler = middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize)(handler)
 

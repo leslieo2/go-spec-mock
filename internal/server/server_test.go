@@ -614,3 +614,45 @@ func TestServer_Start_TLS(t *testing.T) {
 		t.Errorf("Expected body '%s', got '%s'", expectedBody, string(body))
 	}
 }
+
+func TestDynamicHandler(t *testing.T) {
+	// Create initial handler
+	initialHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("initial"))
+	})
+
+	// Create dynamic handler
+	dynamicHandler := NewDynamicHandler(initialHandler)
+
+	// Test initial handler
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	dynamicHandler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, rec.Code)
+	}
+	if rec.Body.String() != "initial" {
+		t.Errorf("Expected body 'initial', got '%s'", rec.Body.String())
+	}
+
+	// Update handler
+	newHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("updated"))
+	})
+	dynamicHandler.UpdateHandler(newHandler)
+
+	// Test updated handler
+	req2 := httptest.NewRequest("GET", "/", nil)
+	rec2 := httptest.NewRecorder()
+	dynamicHandler.ServeHTTP(rec2, req2)
+
+	if rec2.Code != http.StatusCreated {
+		t.Errorf("Expected status code %d, got %d", http.StatusCreated, rec2.Code)
+	}
+	if rec2.Body.String() != "updated" {
+		t.Errorf("Expected body 'updated', got '%s'", rec2.Body.String())
+	}
+}

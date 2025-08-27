@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -22,6 +23,28 @@ import (
 	"go.uber.org/zap"
 )
 
+// DynamicHandler wraps an http.Handler and allows atomic updates
+type DynamicHandler struct {
+	handler atomic.Value // stores http.Handler
+}
+
+// NewDynamicHandler creates a new DynamicHandler with the given initial handler
+func NewDynamicHandler(handler http.Handler) *DynamicHandler {
+	d := &DynamicHandler{}
+	d.handler.Store(handler)
+	return d
+}
+
+// ServeHTTP implements http.Handler by delegating to the current handler
+func (d *DynamicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	d.handler.Load().(http.Handler).ServeHTTP(w, r)
+}
+
+// UpdateHandler atomically updates the handler
+func (d *DynamicHandler) UpdateHandler(h http.Handler) {
+	d.handler.Store(h)
+}
+
 type Server struct {
 	parser   *parser.Parser
 	config   *config.Config
@@ -30,6 +53,9 @@ type Server struct {
 	routes   []parser.Route
 	routeMap map[string][]parser.Route
 	mu       sync.RWMutex // Protects routes, routeMap, and parser
+
+	// Dynamic handler for hot reload
+	dynamicHandler *DynamicHandler
 
 	// Security
 	authManager *security.AuthManager
@@ -92,7 +118,8 @@ func New(cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
-func (s *Server) Start() error {
+// buildHandler creates a new http.Handler with current routes and middleware
+func (s *Server) buildHandler() http.Handler {
 	mux := http.NewServeMux()
 
 	// Add observability endpoints
@@ -126,8 +153,17 @@ func (s *Server) Start() error {
 		})
 	}
 
-	// Apply middleware chain
-	handler := s.applyMiddleware(mux)
+	// Apply middleware chain and return
+	return s.applyMiddleware(mux)
+}
+
+func (s *Server) Start() error {
+	// Create initial handler and dynamic wrapper
+	initialHandler := s.buildHandler()
+	s.dynamicHandler = NewDynamicHandler(initialHandler)
+
+	// Apply middleware chain to the dynamic handler
+	handler := s.dynamicHandler
 
 	s.server = &http.Server{
 		Addr:           fmt.Sprintf("%s:%s", s.config.Server.Host, s.config.Server.Port),
@@ -141,7 +177,7 @@ func (s *Server) Start() error {
 	s.logger.Logger.Info("Starting server",
 		zap.String("host", s.config.Server.Host),
 		zap.String("port", s.config.Server.Port),
-		zap.Int("routes", len(routeMapCopy)),
+		zap.Int("routes", len(s.routes)),
 	)
 
 	s.metrics.SetHealthStatus(true)
@@ -361,8 +397,7 @@ func (s *Server) Reload(ctx context.Context) error {
 	newRouteMap := make(map[string][]parser.Route)
 
 	for _, route := range newRoutes {
-		key := fmt.Sprintf("%s:%s", route.Method, route.Path)
-		newRouteMap[key] = append(newRouteMap[key], route)
+		newRouteMap[route.Path] = append(newRouteMap[route.Path], route)
 	}
 
 	// Update server state atomically with proper synchronization
@@ -371,6 +406,10 @@ func (s *Server) Reload(ctx context.Context) error {
 	s.routeMap = newRouteMap
 	s.parser = newParser
 	s.mu.Unlock()
+
+	// Rebuild and swap the handler atomically
+	newHandler := s.buildHandler()
+	s.dynamicHandler.UpdateHandler(newHandler)
 
 	s.logger.Logger.Info("Server configuration reloaded successfully",
 		zap.Int("routes", len(newRoutes)))

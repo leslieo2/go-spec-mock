@@ -30,9 +30,7 @@ Config Field (Go Struct Path),YAML/JSON Key,CLI Flag,Environment Variable,Defaul
 `Config.Security.RateLimit.CleanupInterval`,`security.rate_limit.cleanup_interval`,N/A,N/A,`5m`,Interval for cleaning up rate limit cache.
 `Config.Security.RateLimit.MaxCacheSize`,`security.rate_limit.max_cache_size`,N/A,N/A,`10000`,Maximum size of the rate limit cache.
 `Config.Security.Headers.Enabled`,`security.headers.enabled`,N/A,N/A,`true`,Enable security headers.
-`Config.Security.Headers.ContentSecurityPolicy`,`security.headers.content_security_policy`,N/A,N/A,`default-src 'self'`,Content Security Policy header value.
 `Config.Security.Headers.HSTSMaxAge`,`security.headers.hsts_max_age`,N/A,N/A,`31536000` (1 year),HSTS Max-Age value.
-`Config.Security.Headers.AllowedHosts`,`security.headers.allowed_hosts`,N/A,N/A,`[]` (empty list),List of allowed hosts for security headers.
 `Config.Security.CORS.Enabled`,`security.cors.enabled`,N/A,N/A,`true`,Enable CORS.
 `Config.Security.CORS.AllowedOrigins`,`security.cors.allowed_origins`,N/A,N/A,"`[""*""]`",List of allowed origins for CORS.
 `Config.Security.CORS.AllowedMethods`,`security.cors.allowed_methods`,N/A,N/A,"`[GET, POST, PUT, DELETE, OPTIONS, PATCH]`",List of allowed HTTP methods for CORS.

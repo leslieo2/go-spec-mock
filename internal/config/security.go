@@ -64,10 +64,8 @@ func DefaultRateLimit() *RateLimit {
 
 // SecurityHeaders contains security headers configuration
 type SecurityHeaders struct {
-	Enabled               bool     `json:"enabled" yaml:"enabled"`
-	ContentSecurityPolicy string   `json:"content_security_policy" yaml:"content_security_policy"`
-	HSTSMaxAge            int      `json:"hsts_max_age" yaml:"hsts_max_age"`
-	AllowedHosts          []string `json:"allowed_hosts" yaml:"allowed_hosts"`
+	Enabled    bool `json:"enabled" yaml:"enabled"`
+	HSTSMaxAge int  `json:"hsts_max_age" yaml:"hsts_max_age"`
 }
 
 // CORSConfig contains CORS configuration
@@ -125,10 +123,8 @@ func DefaultRateLimitConfig() RateLimitConfig {
 // DefaultSecurityHeaders returns default security headers
 func DefaultSecurityHeaders() SecurityHeaders {
 	return SecurityHeaders{
-		Enabled:               true,
-		ContentSecurityPolicy: "default-src 'self'",
-		HSTSMaxAge:            31536000, // 1 year
-		AllowedHosts:          []string{},
+		Enabled:    true,
+		HSTSMaxAge: 31536000, // 1 year
 	}
 }
 

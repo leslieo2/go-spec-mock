@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -10,10 +9,8 @@ import (
 
 // SecurityHeadersConfig defines configuration for security headers
 type SecurityHeadersConfig struct {
-	Enabled               bool
-	HSTSMaxAge            int
-	ContentSecurityPolicy string
-	AllowedHosts          []string
+	Enabled    bool
+	HSTSMaxAge int
 }
 
 // SecurityHeadersMiddleware creates a security headers middleware
@@ -30,33 +27,6 @@ func SecurityHeadersMiddleware(config SecurityHeadersConfig) func(http.Handler) 
 			w.Header().Set(constants.HeaderXFrameOptions, constants.XFrameOptionsDeny)
 			w.Header().Set(constants.HeaderXXSSProtection, constants.XXSSProtectionBlock)
 			w.Header().Set(constants.HeaderStrictTransportSecurity, fmt.Sprintf("max-age=%d; includeSubDomains", config.HSTSMaxAge))
-
-			if config.ContentSecurityPolicy != "" {
-				w.Header().Set(constants.HeaderContentSecurityPolicy, config.ContentSecurityPolicy)
-			}
-
-			// Allowed hosts check
-			if len(config.AllowedHosts) > 0 {
-				host := r.Host
-				allowed := false
-				for _, allowedHost := range config.AllowedHosts {
-					if host == allowedHost {
-						allowed = true
-						break
-					}
-				}
-				if !allowed {
-					w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
-					w.WriteHeader(http.StatusForbidden)
-					response := map[string]interface{}{
-						"error":   "FORBIDDEN",
-						"message": "Host not allowed",
-						"code":    "HOST_NOT_ALLOWED",
-					}
-					_ = json.NewEncoder(w).Encode(response)
-					return
-				}
-			}
 
 			next.ServeHTTP(w, r)
 		})

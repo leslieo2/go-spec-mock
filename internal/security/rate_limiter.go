@@ -32,17 +32,8 @@ func (RealClock) Now() time.Time {
 }
 
 func NewRateLimiter(securityConfig *config.SecurityConfig) *RateLimiter {
-	if securityConfig.RateLimit.CleanupInterval == 0 {
-		securityConfig.RateLimit.CleanupInterval = 5 * time.Minute
-	}
-
-	// Set a maximum cache size to prevent memory exhaustion during DDoS attacks
-	if securityConfig.RateLimit.MaxCacheSize == 0 {
-		securityConfig.RateLimit.MaxCacheSize = 10000 // Default to 10,000 unique identifiers
-	}
-
 	rl := &RateLimiter{
-		limiters:       cache.New(securityConfig.RateLimit.CleanupInterval, securityConfig.RateLimit.CleanupInterval*2),
+		limiters:       cache.New(constants.RateLimitCleanupInterval, constants.RateLimitCleanupInterval*2),
 		securityConfig: securityConfig,
 		clock:          RealClock{},
 	}
@@ -55,18 +46,18 @@ func NewRateLimiter(securityConfig *config.SecurityConfig) *RateLimiter {
 
 // periodicCleanup periodically cleans up the cache to prevent memory exhaustion
 func (rl *RateLimiter) periodicCleanup() {
-	ticker := time.NewTicker(rl.securityConfig.RateLimit.CleanupInterval)
+	ticker := time.NewTicker(constants.RateLimitCleanupInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		currentSize := rl.limiters.ItemCount()
-		maxSize := rl.securityConfig.RateLimit.MaxCacheSize // Get maxSize from config
+		maxSize := constants.RateLimitMaxCacheSize // Get maxSize from constants
 		if currentSize <= maxSize {
 			continue // No cleanup needed
 		}
 
 		// Calculate how many entries to remove
-		toRemove := currentSize - maxSize + int(float64(maxSize)*0.1) // Remove extra 10% to avoid frequent cleanup
+		toRemove := currentSize - constants.RateLimitMaxCacheSize + int(float64(constants.RateLimitMaxCacheSize)*0.1) // Remove extra 10% to avoid frequent cleanup
 
 		// Since go-cache doesn't provide access timestamps, we'll use a simple eviction strategy
 		// Remove entries randomly (simple but effective for DDoS protection)

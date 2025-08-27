@@ -37,13 +37,11 @@ type APIKeyConfig struct {
 
 // RateLimitConfig contains rate limiting configuration
 type RateLimitConfig struct {
-	Enabled         bool                  `json:"enabled" yaml:"enabled"`
-	Strategy        string                `json:"strategy" yaml:"strategy"` // "api_key", "ip"
-	Global          *RateLimit            `json:"global" yaml:"global"`
-	ByAPIKey        map[string]*RateLimit `json:"by_api_key" yaml:"by_api_key"`
-	ByIP            *RateLimit            `json:"by_ip" yaml:"by_ip"`
-	CleanupInterval time.Duration         `json:"cleanup_interval" yaml:"cleanup_interval"`
-	MaxCacheSize    int                   `json:"max_cache_size" yaml:"max_cache_size"`
+	Enabled  bool                  `json:"enabled" yaml:"enabled"`
+	Strategy string                `json:"strategy" yaml:"strategy"` // "api_key", "ip"
+	Global   *RateLimit            `json:"global" yaml:"global"`
+	ByAPIKey map[string]*RateLimit `json:"by_api_key" yaml:"by_api_key"`
+	ByIP     *RateLimit            `json:"by_ip" yaml:"by_ip"`
 }
 
 // RateLimit contains rate limit settings for a specific entity
@@ -115,8 +113,6 @@ func DefaultRateLimitConfig() RateLimitConfig {
 			BurstSize:         120,
 			WindowSize:        time.Minute,
 		},
-		CleanupInterval: 5 * time.Minute,
-		MaxCacheSize:    10000,
 	}
 }
 

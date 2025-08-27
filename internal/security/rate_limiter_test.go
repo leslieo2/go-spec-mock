@@ -32,13 +32,9 @@ func (mc *MockClock) Advance(d time.Duration) {
 }
 
 func newTestRateLimiter(securityConfig *config.SecurityConfig) (*RateLimiter, *MockClock) {
-	if securityConfig.RateLimit.CleanupInterval == 0 {
-		securityConfig.RateLimit.CleanupInterval = 5 * time.Minute
-	}
-
 	mockClock := &MockClock{now: time.Now()}
 	rl := &RateLimiter{
-		limiters:       cache.New(securityConfig.RateLimit.CleanupInterval, securityConfig.RateLimit.CleanupInterval*2),
+		limiters:       cache.New(5*time.Minute, 5*time.Minute*2),
 		securityConfig: securityConfig,
 		clock:          mockClock,
 	}

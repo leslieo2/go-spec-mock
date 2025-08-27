@@ -1,5 +1,7 @@
 package constants
 
+import "time"
+
 // Environment variable constants
 const (
 	EnvHost              = "GO_SPEC_MOCK_HOST"
@@ -69,7 +71,6 @@ const (
 	HeaderXFrameOptions           = "X-Frame-Options"
 	HeaderXXSSProtection          = "X-XSS-Protection"
 	HeaderStrictTransportSecurity = "Strict-Transport-Security"
-	HeaderContentSecurityPolicy   = "Content-Security-Policy"
 )
 
 // Security header values
@@ -105,6 +106,14 @@ const (
 	HeaderXRateLimitRemaining = "X-RateLimit-Remaining"
 	HeaderXRateLimitReset     = "X-RateLimit-Reset"
 	HeaderRetryAfter          = "Retry-After"
+)
+
+// Rate limiter internal constants
+const (
+	// RateLimitCleanupInterval is the interval for cleaning up rate limit cache
+	RateLimitCleanupInterval = 5 * time.Minute
+	// RateLimitMaxCacheSize is the maximum size of the rate limit cache
+	RateLimitMaxCacheSize = 10000
 )
 
 // Context key types

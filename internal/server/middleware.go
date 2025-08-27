@@ -25,10 +25,8 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	// Security headers middleware
 	if s.config.Security.Headers.Enabled {
 		securityConfig := middleware.SecurityHeadersConfig{
-			Enabled:               s.config.Security.Headers.Enabled,
-			HSTSMaxAge:            s.config.Security.Headers.HSTSMaxAge,
-			ContentSecurityPolicy: s.config.Security.Headers.ContentSecurityPolicy,
-			AllowedHosts:          s.config.Security.Headers.AllowedHosts,
+			Enabled:    s.config.Security.Headers.Enabled,
+			HSTSMaxAge: s.config.Security.Headers.HSTSMaxAge,
 		}
 		handler = middleware.SecurityHeadersMiddleware(securityConfig)(handler)
 	}

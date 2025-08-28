@@ -5,6 +5,8 @@
 
 set -e
 
+export no_proxy=localhost,127.0.0.1
+
 # Colors for output
 RED='[0;31m'
 GREEN='[0;32m'

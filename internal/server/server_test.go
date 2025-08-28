@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
-	"github.com/leslieo2/go-spec-mock/internal/observability"
 	"github.com/leslieo2/go-spec-mock/internal/server/middleware"
 	"go.uber.org/zap"
 )
@@ -226,39 +225,6 @@ func TestLoggingMiddleware(t *testing.T) {
 
 	if rec.Code != http.StatusCreated {
 		t.Errorf("Expected status 201, got %d", rec.Code)
-	}
-}
-
-func TestApplyMiddleware(t *testing.T) {
-	server := &Server{
-		config: &config.Config{
-			Security: config.SecurityConfig{
-				CORS: config.CORSConfig{
-					Enabled: true,
-				},
-			},
-		},
-		logger: &observability.Logger{Logger: zap.NewNop()},
-	}
-
-	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	wrapped := server.applyMiddleware(baseHandler)
-
-	if wrapped == nil {
-		t.Fatal("applyMiddleware returned nil")
-	}
-
-	// Test that middleware chain is applied
-	req := httptest.NewRequest("GET", "/test", nil)
-	rec := httptest.NewRecorder()
-
-	wrapped.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Errorf("Expected status 200 after middleware chain, got %d", rec.Code)
 	}
 }
 

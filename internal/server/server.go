@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/observability"
@@ -94,46 +95,165 @@ func New(cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
-// buildHandler creates a new http.Handler with current routes and middleware
+// buildHandler creates a new http.Handler using the chi router for proper path parameter support.
 func (s *Server) buildHandler() http.Handler {
-	mux := http.NewServeMux()
+	router := chi.NewRouter()
 
-	// Add observability endpoints
-	mux.HandleFunc(constants.PathHealth, s.healthHandler)
-	mux.HandleFunc(constants.PathReady, s.readinessHandler)
-
-	// Register OpenAPI routes first with proper synchronization
-	s.mu.RLock()
-	routeMapCopy := make(map[string][]parser.Route, len(s.routeMap))
-	for path, routes := range s.routeMap {
-		routeMapCopy[path] = routes
+	// --- 1. Apply Middleware ---
+	// Logging middleware
+	router.Use(middleware.LoggingMiddleware(s.logger.Logger))
+	// Request size limit middleware
+	router.Use(middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize))
+	// CORS middleware
+	if s.config.Security.CORS.Enabled {
+		corsMiddleware := middleware.NewCORSMiddleware(
+			s.config.Security.CORS.AllowedOrigins,
+			s.config.Security.CORS.AllowedMethods,
+			s.config.Security.CORS.AllowedHeaders,
+			s.config.Security.CORS.AllowCredentials,
+			s.config.Security.CORS.MaxAge,
+		)
+		router.Use(corsMiddleware.Handler)
 	}
-	_, rootExists := s.routeMap["/"]
+
+	// --- 2. Register Special Routes ---
+	router.Get(constants.PathHealth, s.healthHandler)
+	router.Get(constants.PathReady, s.readinessHandler)
+	router.Get(constants.PathDocumentation, s.serveDocumentation)
+	// Handle root path redirect separately
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		// If the spec defines a "/" route, it will be handled below.
+		// If not, this acts as a fallback to redirect to docs.
+		// We check the route map to decide.
+		s.mu.RLock()
+		_, rootExists := s.routeMap["/"]
+		s.mu.RUnlock()
+
+		if !rootExists {
+			http.Redirect(w, r, constants.PathDocumentation, http.StatusFound)
+		}
+		// If rootExists, the more specific handler registered below will take precedence.
+	})
+
+	// --- 3. Register All OpenAPI Mock Routes ---
+	s.mu.RLock()
+	routeMapCopy := s.routeMap
 	s.mu.RUnlock()
 
-	for path, routes := range routeMapCopy {
-		s.registerRoute(mux, path, routes)
+	for path, routesForPath := range routeMapCopy {
+		// Capture the routes for this path in the closure
+		currentRoutes := routesForPath
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			// This is the logic from the registerRoute function
+			s.handleMockRequest(w, r, currentRoutes)
+		}
+
+		// Register this handler for all methods defined for this path
+		for _, route := range currentRoutes {
+			// chi router methods are uppercase (GET, POST, etc.)
+			router.Method(strings.ToUpper(route.Method), path, http.HandlerFunc(handler))
+		}
 	}
 
-	// Add documentation endpoint at /docs
-	mux.HandleFunc(constants.PathDocumentation, s.serveDocumentation)
+	// --- 4. Register the Fallback Proxy Handler ---
+	// This handler is only called if NO route above matches.
+	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		if s.config.Proxy.Enabled {
+			s.logger.Logger.Debug("No mock route found, proxying request", zap.String("path", r.URL.Path))
+			s.handleProxyRequest(w, r)
+		} else {
+			http.NotFound(w, r)
+		}
+	})
 
-	// Handle root path: if no OpenAPI route exists, serve documentation or proxy
-	if !rootExists {
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/" {
-				// Redirect to documentation or handle based on configuration
-				http.Redirect(w, r, constants.PathDocumentation, http.StatusFound)
-			} else if s.config.Proxy.Enabled {
-				s.handleProxyRequest(w, r)
-			} else {
-				http.NotFound(w, r)
-			}
-		})
+	return router
+}
+
+// handleMockRequest handles mock requests for a specific path with multiple routes
+func (s *Server) handleMockRequest(w http.ResponseWriter, r *http.Request, routes []parser.Route) {
+	start := time.Now()
+
+	// Get request size
+	requestSize := r.ContentLength
+	if requestSize < 0 {
+		requestSize = 0
 	}
 
-	// Apply middleware chain and return
-	return s.applyMiddleware(mux)
+	// Pre-compute supported methods for this path
+	methods := make([]string, 0, len(routes))
+	for _, route := range routes {
+		methods = append(methods, route.Method)
+	}
+
+	// Create a fast lookup map for routes
+	routeLookup := make(map[string]*parser.Route, len(routes))
+	for i := range routes {
+		routeLookup[routes[i].Method] = &routes[i]
+	}
+
+	// Fast path: check if method exists
+	matchedRoute, exists := routeLookup[r.Method]
+	if !exists {
+		s.sendMethodNotAllowedResponse(w, methods, r.Method)
+		s.logger.Logger.Warn("Method not allowed",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.String("remote_addr", r.RemoteAddr),
+		)
+		return
+	}
+
+	// Cache key for response
+	cacheKey := s.generateCacheKey(r.Method, r.URL.Path, r)
+
+	// Try to get from cache
+	if cached, ok := s.getCachedResponse(cacheKey); ok {
+		s.sendJSONResponse(w, cached.StatusCode, cached.Body)
+		s.logger.Logger.Debug("Served from cache",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.Int("status_code", cached.StatusCode),
+		)
+		return
+	}
+
+	// Generate response
+	statusCode := s.getStatusCodeFromRequest(r)
+	buf, status, err := s.generateResponse(matchedRoute, statusCode)
+	if err != nil {
+		if strings.Contains(err.Error(), "no example found") {
+			s.sendErrorResponse(w, http.StatusNotFound, err.Error())
+
+			s.logger.Logger.Warn("No example found",
+				zap.String("status_code", statusCode),
+				zap.String("path", r.URL.Path),
+			)
+		} else {
+			s.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+
+			s.logger.Logger.Error("Failed to serialize response",
+				zap.Error(err),
+				zap.String("path", r.URL.Path),
+			)
+		}
+		return
+	}
+
+	responseSize := int64(len(buf))
+
+	// Cache the response
+	s.cacheResponse(cacheKey, status, buf)
+
+	// Send response
+	s.sendJSONResponse(w, status, buf)
+	s.logger.Logger.Debug("Request processed",
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+		zap.Int("status_code", status),
+		zap.Duration("duration", time.Since(start)),
+		zap.Int64("request_size", requestSize),
+		zap.Int64("response_size", responseSize),
+	)
 }
 
 func (s *Server) Start() error {
@@ -197,104 +317,6 @@ func (s *Server) Start() error {
 	}
 
 	return nil
-}
-
-func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.Route) {
-	// With Go 1.22+, http.ServeMux supports path parameters in the {name} format,
-	// which is the same as the OpenAPI spec. We can use the path as is.
-	muxPath := path
-
-	// Pre-compute supported methods for this path
-	methods := make([]string, 0, len(routes))
-	for _, route := range routes {
-		methods = append(methods, route.Method)
-	}
-
-	// Create a fast lookup map for routes
-	routeLookup := make(map[string]*parser.Route, len(routes))
-	for i := range routes {
-		routeLookup[routes[i].Method] = &routes[i]
-	}
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		// Get request size
-		requestSize := r.ContentLength
-		if requestSize < 0 {
-			requestSize = 0
-		}
-
-		// Fast path: check if method exists
-		matchedRoute, exists := routeLookup[r.Method]
-		if !exists {
-			s.sendMethodNotAllowedResponse(w, methods, r.Method)
-			s.logger.Logger.Warn("Method not allowed",
-				zap.String("method", r.Method),
-				zap.String("path", path),
-				zap.String("remote_addr", r.RemoteAddr),
-			)
-			return
-		}
-
-		// Cache key for response
-		cacheKey := s.generateCacheKey(r.Method, path, r)
-
-		// Try to get from cache
-		if cached, ok := s.getCachedResponse(cacheKey); ok {
-			s.sendJSONResponse(w, cached.StatusCode, cached.Body)
-			s.logger.Logger.Debug("Served from cache",
-				zap.String("method", r.Method),
-				zap.String("path", path),
-				zap.Int("status_code", cached.StatusCode),
-			)
-			return
-		}
-
-		// Generate response
-		statusCode := s.getStatusCodeFromRequest(r)
-		buf, status, err := s.generateResponse(matchedRoute, statusCode)
-		if err != nil {
-			if strings.Contains(err.Error(), "no example found") {
-				s.sendErrorResponse(w, http.StatusNotFound, err.Error())
-
-				s.logger.Logger.Warn("No example found",
-					zap.String("status_code", statusCode),
-					zap.String("path", path),
-				)
-			} else {
-				s.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
-
-				s.logger.Logger.Error("Failed to serialize response",
-					zap.Error(err),
-					zap.String("path", path),
-				)
-			}
-			return
-		}
-
-		responseSize := int64(len(buf))
-
-		// Cache the response
-		s.cacheResponse(cacheKey, status, buf)
-
-		// Send response
-		s.sendJSONResponse(w, status, buf)
-		s.logger.Logger.Debug("Request processed",
-			zap.String("method", r.Method),
-			zap.String("path", path),
-			zap.Int("status_code", status),
-			zap.Duration("duration", time.Since(start)),
-			zap.Int64("request_size", requestSize),
-			zap.Int64("response_size", responseSize),
-		)
-	}
-
-	s.logger.Logger.Info("Registered route",
-		zap.String("methods", strings.Join(methods, ",")),
-		zap.String("path", path),
-	)
-	mux.HandleFunc(muxPath, handler)
 }
 
 // Reload implements the hotreload.Reloadable interface

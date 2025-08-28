@@ -5,6 +5,7 @@ go 1.24.5
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/getkin/kin-openapi v0.132.0
+	github.com/go-chi/chi/v5 v5.2.0
 	go.uber.org/zap v1.27.0
 	gopkg.in/yaml.v3 v3.0.1
 )

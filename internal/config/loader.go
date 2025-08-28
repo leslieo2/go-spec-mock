@@ -249,6 +249,17 @@ func mergeConfig(base *Config, file *Config) {
 	if file.TLS.KeyFile != "" {
 		base.TLS.KeyFile = file.TLS.KeyFile
 	}
+
+	// Merge proxy configuration
+	if file.Proxy.Enabled != base.Proxy.Enabled {
+		base.Proxy.Enabled = file.Proxy.Enabled
+	}
+	if file.Proxy.Target != "" {
+		base.Proxy.Target = file.Proxy.Target
+	}
+	if file.Proxy.Timeout > 0 {
+		base.Proxy.Timeout = file.Proxy.Timeout
+	}
 }
 
 // validateFilePath checks if the file path is safe to read

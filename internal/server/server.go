@@ -299,7 +299,7 @@ func (s *Server) registerRoute(mux *http.ServeMux, path string, routes []parser.
 
 // Reload implements the hotreload.Reloadable interface
 func (s *Server) Reload(ctx context.Context) error {
-	s.logger.Logger.Info("Reloading server configuration")
+	s.logger.Logger.Info("Reloading server configuration - Reload method called!")
 
 	// Parse the updated OpenAPI spec
 	newParser, err := parser.New(s.config.SpecFile)
@@ -321,6 +321,9 @@ func (s *Server) Reload(ctx context.Context) error {
 	s.routeMap = newRouteMap
 	s.parser = newParser
 	s.mu.Unlock()
+
+	// Clear the cache to ensure new responses are generated from the updated spec
+	s.clearCache()
 
 	// Rebuild and swap the handler atomically
 	newHandler := s.buildHandler()

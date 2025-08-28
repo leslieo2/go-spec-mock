@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/leslieo2/go-spec-mock/internal/constants"
 	"github.com/leslieo2/go-spec-mock/internal/parser"
@@ -108,6 +109,12 @@ func (s *Server) cacheResponse(cacheKey string, statusCode int, body []byte) {
 		StatusCode: statusCode,
 		Body:       body,
 	})
+}
+
+// clearCache clears all cached responses
+func (s *Server) clearCache() {
+	// Create a new empty cache map
+	s.cache = &sync.Map{}
 }
 
 // getStatusCodeFromRequest extracts the desired status code from the request

@@ -43,22 +43,6 @@ func TestServerConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name: "Invalid Metrics Port",
-			config: ServerConfig{
-				Host: "localhost",
-				Port: "8080",
-			},
-			wantErr: false,
-		},
-		{
-			name: "Port and MetricsPort are the same",
-			config: ServerConfig{
-				Host: "localhost",
-				Port: "8080",
-			},
-			wantErr: false,
-		},
 	}
 
 	for _, tt := range tests {

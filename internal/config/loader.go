@@ -226,6 +226,9 @@ func mergeConfig(base *Config, file *Config) {
 	if file.Observability.Logging.Format != "" {
 		base.Observability.Logging.Format = file.Observability.Logging.Format
 	}
+	if file.Observability.Logging.Output != "" {
+		base.Observability.Logging.Output = file.Observability.Logging.Output
+	}
 
 	if file.SpecFile != "" {
 		base.SpecFile = file.SpecFile
@@ -262,7 +265,7 @@ func mergeConfig(base *Config, file *Config) {
 	}
 
 	// Merge security configuration (including CORS)
-	if file.Security.CORS.Enabled != base.Security.CORS.Enabled {
+	if file.Security.CORS.Enabled {
 		base.Security.CORS.Enabled = file.Security.CORS.Enabled
 	}
 	if len(file.Security.CORS.AllowedOrigins) > 0 {
@@ -285,6 +288,11 @@ func mergeConfig(base *Config, file *Config) {
 // validateFilePath checks if the file path is safe to read
 // Prevents directory traversal attacks and ensures the file is within expected locations
 func validateFilePath(filePath string) error {
+	// Check for directory traversal attempts in the original path first
+	if strings.Contains(filePath, "..") {
+		return fmt.Errorf("path contains directory traversal attempts")
+	}
+
 	// Get absolute path and clean it
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
@@ -294,7 +302,7 @@ func validateFilePath(filePath string) error {
 	// Clean the path to remove any .. or . components
 	cleanPath := filepath.Clean(absPath)
 
-	// Ensure the path doesn't contain any suspicious patterns
+	// Additional safety check (though the original path check should catch most cases)
 	if strings.Contains(cleanPath, "..") {
 		return fmt.Errorf("path contains directory traversal attempts")
 	}

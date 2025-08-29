@@ -81,13 +81,6 @@ func TestObservabilityConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name: "Invalid Metrics Config",
-			config: ObservabilityConfig{
-				Logging: DefaultLoggingConfig(),
-			},
-			wantErr: false,
-		},
 	}
 
 	for _, tt := range tests {

@@ -319,6 +319,18 @@ func (s *Server) Start() error {
 	return nil
 }
 
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown() error {
+	if s.server == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.ServerShutdownTimeout)
+	defer cancel()
+
+	return s.server.Shutdown(ctx)
+}
+
 // Reload implements the hotreload.Reloadable interface
 func (s *Server) Reload(ctx context.Context) error {
 	s.logger.Logger.Info("Reloading server configuration - Reload method called!")

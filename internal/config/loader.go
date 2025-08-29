@@ -260,6 +260,26 @@ func mergeConfig(base *Config, file *Config) {
 	if file.Proxy.Timeout > 0 {
 		base.Proxy.Timeout = file.Proxy.Timeout
 	}
+
+	// Merge security configuration (including CORS)
+	if file.Security.CORS.Enabled != base.Security.CORS.Enabled {
+		base.Security.CORS.Enabled = file.Security.CORS.Enabled
+	}
+	if len(file.Security.CORS.AllowedOrigins) > 0 {
+		base.Security.CORS.AllowedOrigins = file.Security.CORS.AllowedOrigins
+	}
+	if len(file.Security.CORS.AllowedMethods) > 0 {
+		base.Security.CORS.AllowedMethods = file.Security.CORS.AllowedMethods
+	}
+	if len(file.Security.CORS.AllowedHeaders) > 0 {
+		base.Security.CORS.AllowedHeaders = file.Security.CORS.AllowedHeaders
+	}
+	if file.Security.CORS.AllowCredentials != base.Security.CORS.AllowCredentials {
+		base.Security.CORS.AllowCredentials = file.Security.CORS.AllowCredentials
+	}
+	if file.Security.CORS.MaxAge != base.Security.CORS.MaxAge {
+		base.Security.CORS.MaxAge = file.Security.CORS.MaxAge
+	}
 }
 
 // validateFilePath checks if the file path is safe to read

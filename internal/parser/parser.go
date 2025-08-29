@@ -9,6 +9,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/leslieo2/go-spec-mock/internal/constants"
+	"github.com/leslieo2/go-spec-mock/internal/generator"
 )
 
 type Parser struct {
@@ -125,43 +126,16 @@ func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode st
 }
 
 func generateExampleFromSchema(schema *openapi3.Schema) interface{} {
-	if schema == nil {
-		return nil
+	// Create a deterministic generator for consistent results
+	config := generator.Config{
+		Deterministic:       true, // Use fixed seed for consistent caching
+		Seed:                42,   // Fixed seed for deterministic generation
+		UseFieldNameForData: true, // Enable field name intelligence
+		DefaultArrayLength:  2,    // Generate 2 items by default
 	}
+	gen := generator.New(config)
 
-	// Check if schema has an example
-	if schema.Example != nil {
-		return schema.Example
-	}
-
-	switch {
-	case schema.Type.Is("object"):
-		result := make(map[string]interface{}, len(schema.Properties))
-		for propName, prop := range schema.Properties {
-			if prop.Value != nil {
-				result[propName] = generateExampleFromSchema(prop.Value)
-			}
-		}
-		return result
-	case schema.Type.Is("array"):
-		if schema.Items != nil && schema.Items.Value != nil {
-			return []interface{}{generateExampleFromSchema(schema.Items.Value)}
-		}
-		return []interface{}{}
-	case schema.Type.Is("string"):
-		if len(schema.Enum) > 0 {
-			return schema.Enum[0]
-		}
-		return "string"
-	case schema.Type.Is("number"):
-		return 0.0
-	case schema.Type.Is("integer"):
-		return 0
-	case schema.Type.Is("boolean"):
-		return true
-	default:
-		return nil
-	}
+	return gen.GenerateData(schema)
 }
 
 var methodMap = map[string]struct{}{

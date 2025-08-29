@@ -20,6 +20,7 @@
 ## ✨ Key Features
 
 *   **🚀 Specification-First:** Instantly mock any API by providing an OpenAPI 3.0 (YAML/JSON) file.
+*   **🎯 Realistic Data Generation:** Automatically generates context-aware mock data from OpenAPI schemas - realistic emails, names, dates, and constraint-compliant values when explicit examples are missing.
 *   **⚡️ Dynamic Mocking:** Serves static examples from your spec and allows dynamic status code overrides for testing different scenarios.
 *   **🔥 Hot Reload:** Automatically reloads OpenAPI specifications and configuration files without server restart for rapid development.
 *   **🔒 Secure Mocking:** Full HTTPS/TLS support for testing secure clients and mimicking production environments.
@@ -431,7 +432,7 @@ The project is currently at **v1.5.1** and is production-ready with enterprise-g
 <summary><strong>🎯 Phase 3: Enhanced Core Mocking & Developer Experience (In Progress)</strong></summary>
 
 #### 🚀 Core Mocking Enhancements
-- [ ] **Dynamic Data Generation** - Generate realistic mock data from schema when examples are missing
+- [x] **Dynamic Data Generation** - Generate realistic mock data from schema when examples are missing
 - [ ] **Named Example Selection** - Support `__example=exampleName` parameter to select specific examples
 - [ ] **Response Latency Simulation** - Add `__delay=500ms` parameter to simulate network delays
 

@@ -88,6 +88,7 @@ const (
 const (
 	QueryParamStatusCode = "__statusCode"
 	QueryParamDelay      = "__delay"
+	QueryParamExample    = "__example"
 )
 
 // Context key type for avoiding collisions

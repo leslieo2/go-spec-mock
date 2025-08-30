@@ -474,7 +474,15 @@ func TestGenerateCacheKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key := server.generateCacheKey(tt.method, tt.path, tt.request)
+			// Extract status code and example name from query parameters for the test
+			query := tt.request.URL.Query()
+			statusCode := query.Get("__statusCode")
+			if statusCode == "" {
+				statusCode = "200"
+			}
+			exampleName := query.Get("__example")
+
+			key := server.generateCacheKey(tt.method, tt.path, tt.request, statusCode, exampleName)
 			if key != tt.expected {
 				t.Errorf("generateCacheKey() = %v, want %v", key, tt.expected)
 			}
@@ -489,8 +497,8 @@ func TestGenerateCacheKey_CollisionPrevention(t *testing.T) {
 	req1, _ := http.NewRequest("GET", "/test?a=1&b=2", nil)
 	req2, _ := http.NewRequest("GET", "/test?b=2&a=1", nil)
 
-	key1 := server.generateCacheKey("GET", "/test", req1)
-	key2 := server.generateCacheKey("GET", "/test", req2)
+	key1 := server.generateCacheKey("GET", "/test", req1, "200", "")
+	key2 := server.generateCacheKey("GET", "/test", req2, "200", "")
 
 	if key1 != key2 {
 		t.Error("Different parameter orders should generate identical cache keys after sorting")
@@ -503,8 +511,8 @@ func TestGenerateCacheKey_CollisionPrevention(t *testing.T) {
 	req4, _ := http.NewRequest("GET", "/secure", nil)
 	req4.Header.Set("Authorization", "Bearer token2")
 
-	key3 := server.generateCacheKey("GET", "/secure", req3)
-	key4 := server.generateCacheKey("GET", "/secure", req4)
+	key3 := server.generateCacheKey("GET", "/secure", req3, "200", "")
+	key4 := server.generateCacheKey("GET", "/secure", req4, "200", "")
 
 	if key3 == key4 {
 		t.Error("Different authorization tokens should generate different cache keys")
@@ -517,8 +525,8 @@ func TestGenerateCacheKey_CollisionPrevention(t *testing.T) {
 	req6, _ := http.NewRequest("GET", "/data", nil)
 	req6.Header.Set("Accept", "application/xml")
 
-	key5 := server.generateCacheKey("GET", "/data", req5)
-	key6 := server.generateCacheKey("GET", "/data", req6)
+	key5 := server.generateCacheKey("GET", "/data", req5, "200", "")
+	key6 := server.generateCacheKey("GET", "/data", req6, "200", "")
 
 	if key5 == key6 {
 		t.Error("Different accept headers should generate different cache keys")
@@ -530,7 +538,13 @@ func TestGenerateCacheKey_InternalParameters(t *testing.T) {
 
 	// Test that internal parameters are excluded from cache key
 	req, _ := http.NewRequest("GET", "/test?__statusCode=404&_=timestamp&realParam=value", nil)
-	key := server.generateCacheKey("GET", "/test", req)
+	// Extract status code from query parameter for the test
+	query := req.URL.Query()
+	statusCode := query.Get("__statusCode")
+	if statusCode == "" {
+		statusCode = "200"
+	}
+	key := server.generateCacheKey("GET", "/test", req, statusCode, "")
 
 	// Should only include realParam, not __statusCode or _
 	expected := "GET:/test:404:realParam=value"

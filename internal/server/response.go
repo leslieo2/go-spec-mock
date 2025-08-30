@@ -23,7 +23,7 @@ type cachedResponse struct {
 }
 
 // generateCacheKey creates a cache key from request parameters
-func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
+func (s *Server) generateCacheKey(method, path string, r *http.Request, statusCode, exampleName string) string {
 	// Create a consistent cache key including all relevant request parameters
 	query := r.URL.Query()
 
@@ -31,7 +31,7 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 	var params []string
 	for key, values := range query {
 		// Skip internal parameters that don't affect response content
-		if key == constants.QueryParamStatusCode || key == constants.QueryParamDelay || key == "_" {
+		if key == constants.QueryParamStatusCode || key == constants.QueryParamDelay || key == constants.QueryParamExample || key == "_" {
 			continue
 		}
 		for _, value := range values {
@@ -49,7 +49,6 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 	}
 
 	// Always include status code as it's a primary cache key component
-	statusCode := query.Get(constants.QueryParamStatusCode)
 	if statusCode == "" {
 		statusCode = strconv.Itoa(constants.StatusOK)
 	}
@@ -79,6 +78,9 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 
 	// Build cache key with all components
 	cacheKey := method + ":" + path + ":" + statusCode
+	if exampleName != "" {
+		cacheKey += ":" + exampleName
+	}
 
 	// Add sorted query parameters
 	if len(params) > 0 {
@@ -118,8 +120,8 @@ func (s *Server) clearCache() {
 }
 
 // generateResponse generates a response for the given route and status code
-func (s *Server) generateResponse(route *parser.Route, statusCode string) ([]byte, int, error) {
-	example, err := s.parser.GetExampleResponse(route.Operation, statusCode)
+func (s *Server) generateResponse(route *parser.Route, statusCode string, exampleName string) ([]byte, int, error) {
+	example, err := s.parser.GetExampleResponse(route.Operation, statusCode, exampleName)
 	if err == nil {
 		buf, err := json.Marshal(example)
 		if err != nil {
@@ -131,7 +133,7 @@ func (s *Server) generateResponse(route *parser.Route, statusCode string) ([]byt
 	// Try to find any 2xx response if requested status not found
 	for code := range route.Operation.Responses.Map() {
 		if strings.HasPrefix(code, "2") {
-			if example, err = s.parser.GetExampleResponse(route.Operation, code); err == nil {
+			if example, err = s.parser.GetExampleResponse(route.Operation, code, exampleName); err == nil {
 				buf, err := json.Marshal(example)
 				if err != nil {
 					return nil, 0, fmt.Errorf("failed to serialize response: %w", err)

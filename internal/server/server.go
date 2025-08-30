@@ -107,6 +107,8 @@ func (s *Server) buildHandler() http.Handler {
 	router.Use(middleware.DelayMiddleware(s.logger.Logger))
 	// Status code extraction middleware
 	router.Use(middleware.StatusCodeMiddleware(s.logger.Logger))
+	// Example name selection middleware
+	router.Use(middleware.ExampleMiddleware(s.logger.Logger))
 	// Request size limit middleware
 	router.Use(middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize))
 	// CORS middleware
@@ -208,8 +210,12 @@ func (s *Server) handleMockRequest(w http.ResponseWriter, r *http.Request, route
 		return
 	}
 
+	// Generate response - get status code and example name from context or use defaults
+	statusCodeStr := getStatusCodeFromContext(r)
+	exampleName := middleware.GetExampleNameFromContext(r)
+
 	// Cache key for response
-	cacheKey := s.generateCacheKey(r.Method, r.URL.Path, r)
+	cacheKey := s.generateCacheKey(r.Method, r.URL.Path, r, statusCodeStr, exampleName)
 
 	// Try to get from cache
 	if cached, ok := s.getCachedResponse(cacheKey); ok {
@@ -221,10 +227,7 @@ func (s *Server) handleMockRequest(w http.ResponseWriter, r *http.Request, route
 		)
 		return
 	}
-
-	// Generate response - get status code from context or use default
-	statusCodeStr := getStatusCodeFromContext(r)
-	buf, status, err := s.generateResponse(matchedRoute, statusCodeStr)
+	buf, status, err := s.generateResponse(matchedRoute, statusCodeStr, exampleName)
 	if err != nil {
 		if strings.Contains(err.Error(), "no example found") {
 			s.sendErrorResponse(w, http.StatusNotFound, err.Error())

@@ -60,7 +60,7 @@ func TestGetExampleResponse(t *testing.T) {
 	}
 
 	// Test getting 200 response for first route
-	_, err = parser.GetExampleResponse(routes[0].Operation, "200")
+	_, err = parser.GetExampleResponse(routes[0].Operation, "200", "")
 	if err != nil {
 		t.Logf("Expected some routes might not have 200 responses: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestGetExampleResponse_NotFound(t *testing.T) {
 	}
 
 	// Test getting a non-existent status code
-	_, err = parser.GetExampleResponse(routes[0].Operation, "999")
+	_, err = parser.GetExampleResponse(routes[0].Operation, "999", "")
 	if err == nil {
 		t.Log("Expected error for non-existent status code, but got none")
 	} else {
@@ -106,7 +106,7 @@ func TestGetExampleResponse_ValidCodes(t *testing.T) {
 	statusCodes := []string{"200", "201", "400", "404", "500"}
 
 	for _, code := range statusCodes {
-		result, err := parser.GetExampleResponse(routes[0].Operation, code)
+		result, err := parser.GetExampleResponse(routes[0].Operation, code, "")
 		if err != nil {
 			t.Logf("No example for status %s: %v", code, err)
 		} else {

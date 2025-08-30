@@ -599,7 +599,7 @@ func TestDynamicDataGeneration_EndToEnd(t *testing.T) {
 	for _, route := range routes[:min(len(routes), 3)] { // Test first 3 routes only
 		for _, code := range statusCodes {
 			t.Run(fmt.Sprintf("route_%s_status_%s", route.Path, code), func(t *testing.T) {
-				result, err := parser.GetExampleResponse(route.Operation, code)
+				result, err := parser.GetExampleResponse(route.Operation, code, "")
 				if err != nil {
 					t.Logf("No example for status %s on route %s: %v", code, route.Path, err)
 					return

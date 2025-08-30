@@ -35,15 +35,32 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Pet'
-              example:
-                - id: 1
-                  name: doggie
-                  photoUrls:
-                    - "string"
-                  tags:
-                    - id: 0
-                      name: "string"
-                  status: available
+              examples:
+                default:
+                  summary: Default pet list
+                  value:
+                    - id: 1
+                      name: doggie
+                      photoUrls:
+                        - "string"
+                      tags:
+                        - id: 0
+                          name: "string"
+                      status: available
+                empty:
+                  summary: Empty pet list
+                  value: []
+                premium:
+                  summary: Premium pets only
+                  value:
+                    - id: 100
+                      name: "King"
+                      photoUrls:
+                        - "https://example.com/king.jpg"
+                      tags:
+                        - id: 1
+                          name: "premium"
+                      status: "available"
         '400':
           description: Invalid status value
           content:
@@ -107,15 +124,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Pet'
-              example:
-                id: 1
-                name: doggie
-                photoUrls:
-                  - "string"
-                tags:
-                  - id: 0
-                    name: "string"
-                status: available
+              examples:
+                default:
+                  summary: Default pet
+                  value:
+                    id: 1
+                    name: doggie
+                    photoUrls:
+                      - "string"
+                    tags:
+                      - id: 0
+                        name: "string"
+                    status: available
+                premium:
+                  summary: Premium pet
+                  value:
+                    id: 100
+                    name: "King"
+                    photoUrls:
+                      - "https://example.com/king.jpg"
+                    tags:
+                      - id: 1
+                        name: "premium"
+                    status: "available"
+                sold:
+                  summary: Sold pet
+                  value:
+                    id: 5
+                    name: "Max"
+                    photoUrls:
+                      - "https://example.com/max.jpg"
+                    tags:
+                      - id: 2
+                        name: "sold"
+                    status: "sold"
         '400':
           description: Invalid ID supplied
           content:

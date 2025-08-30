@@ -80,18 +80,21 @@ func (p *Parser) preGenerateExamples(operation *openapi3.Operation) {
 	// Get all response codes and only process common ones
 	for code := range operation.Responses.Map() {
 		if _, isCommon := commonCodes[code]; isCommon {
-			_, _ = p.GetExampleResponse(operation, code)
+			_, _ = p.GetExampleResponse(operation, code, "")
 		}
 	}
 }
 
-func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode string) (interface{}, error) {
+func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode string, exampleName string) (interface{}, error) {
 	if operation.Responses == nil {
 		return nil, fmt.Errorf("no responses defined")
 	}
 
 	// Check cache first
 	cacheKey := operation.OperationID + ":" + statusCode
+	if exampleName != "" {
+		cacheKey += ":" + exampleName
+	}
 	if cached, ok := p.cache.Load(cacheKey); ok {
 		return cached, nil
 	}
@@ -112,9 +115,42 @@ func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode st
 	}
 
 	var result interface{}
-	if jsonContent.Example != nil {
+
+	// Try to find the requested named example first
+	if exampleName != "" && jsonContent.Examples != nil {
+		if namedExample, exists := jsonContent.Examples[exampleName]; exists && namedExample != nil && namedExample.Value != nil {
+			result = namedExample.Value.Value
+		} else {
+			// Requested example not found, fall back to default behavior
+			if jsonContent.Example != nil {
+				result = jsonContent.Example
+			} else if schema := jsonContent.Schema; schema != nil && schema.Value != nil {
+				result = generateExampleFromSchema(schema.Value)
+			} else {
+				return nil, fmt.Errorf("named example '%s' not found and no fallback available", exampleName)
+			}
+		}
+	} else if jsonContent.Example != nil {
+		// Use single example field
 		result = jsonContent.Example
+	} else if len(jsonContent.Examples) > 0 {
+		// If no specific example requested but examples exist, use the first one
+		for _, example := range jsonContent.Examples {
+			if example != nil && example.Value != nil {
+				result = example.Value.Value
+				break
+			}
+		}
+		if result == nil {
+			// No valid examples found, generate from schema
+			if schema := jsonContent.Schema; schema != nil && schema.Value != nil {
+				result = generateExampleFromSchema(schema.Value)
+			} else {
+				return nil, fmt.Errorf("no valid examples or schema found")
+			}
+		}
 	} else if schema := jsonContent.Schema; schema != nil && schema.Value != nil {
+		// Generate from schema
 		result = generateExampleFromSchema(schema.Value)
 	} else {
 		return nil, fmt.Errorf("no example or schema found")

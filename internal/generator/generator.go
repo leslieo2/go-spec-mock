@@ -132,14 +132,26 @@ func (g *Generator) GenerateDataWithContext(schema *openapi3.Schema, ctx Generat
 	}
 
 	if len(schema.OneOf) > 0 {
-		selectedSchema := schema.OneOf[g.randIntn(len(schema.OneOf))]
+		// In deterministic mode, always pick the first schema
+		var selectedSchema *openapi3.SchemaRef
+		if g.config.Deterministic {
+			selectedSchema = schema.OneOf[0]
+		} else {
+			selectedSchema = schema.OneOf[g.randIntn(len(schema.OneOf))]
+		}
 		if selectedSchema.Value != nil {
 			return g.GenerateDataWithContext(selectedSchema.Value, ctx)
 		}
 	}
 
 	if len(schema.AnyOf) > 0 {
-		selectedSchema := schema.AnyOf[g.randIntn(len(schema.AnyOf))]
+		// In deterministic mode, always pick the first schema
+		var selectedSchema *openapi3.SchemaRef
+		if g.config.Deterministic {
+			selectedSchema = schema.AnyOf[0]
+		} else {
+			selectedSchema = schema.AnyOf[g.randIntn(len(schema.AnyOf))]
+		}
 		if selectedSchema.Value != nil {
 			return g.GenerateDataWithContext(selectedSchema.Value, ctx)
 		}
@@ -167,11 +179,18 @@ func (g *Generator) GenerateDataWithContext(schema *openapi3.Schema, ctx Generat
 // generateObject generates a mock object from schema properties
 func (g *Generator) generateObject(schema *openapi3.Schema, ctx GenerationContext) interface{} {
 	result := make(map[string]interface{}, len(schema.Properties))
+
+	// Add current schema title to parent schemas to prevent circular references
+	newParentSchemas := ctx.ParentSchemas
+	if schema.Title != "" {
+		newParentSchemas = append(ctx.ParentSchemas, schema.Title)
+	}
+
 	for propName, prop := range schema.Properties {
 		if prop.Value != nil {
 			childCtx := GenerationContext{
 				FieldName:     propName,
-				ParentSchemas: append(ctx.ParentSchemas, propName),
+				ParentSchemas: newParentSchemas,
 			}
 			result[propName] = g.GenerateDataWithContext(prop.Value, childCtx)
 		}
@@ -213,6 +232,7 @@ func (g *Generator) generateArray(schema *openapi3.Schema, ctx GenerationContext
 }
 
 // generateString generates a mock string value
+// generateString generates a mock string value
 func (g *Generator) generateString(schema *openapi3.Schema, ctx GenerationContext) interface{} {
 	// Priority 3: Format-specific generation
 	if schema.Format != "" {
@@ -237,7 +257,12 @@ func (g *Generator) generateString(schema *openapi3.Schema, ctx GenerationContex
 	}
 
 	// Priority 6: Default realistic string
-	result := faker.Word()
+	var result string
+	if g.config.Deterministic {
+		result = g.generateDeterministicString()
+	} else {
+		result = faker.Word()
+	}
 	return g.applyStringConstraints(result, schema)
 }
 
@@ -311,6 +336,24 @@ func (g *Generator) generateInteger(schema *openapi3.Schema, ctx GenerationConte
 // generateBoolean generates a mock boolean value
 func (g *Generator) generateBoolean(schema *openapi3.Schema, ctx GenerationContext) interface{} {
 	return g.randIntn(2) == 1
+}
+
+// generateDeterministicString generates a deterministic string based on a seed
+func (g *Generator) generateDeterministicString() string {
+	if g.rand == nil {
+		return "default"
+	}
+
+	// Use a simple deterministic string generation
+	chars := "abcdefghijklmnopqrstuvwxyz"
+	length := 5 + g.rand.Intn(5) // Random length between 5-9 characters
+
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = chars[g.rand.Intn(len(chars))]
+	}
+
+	return string(result)
 }
 
 // initFormatHandlers initializes the format handler registry

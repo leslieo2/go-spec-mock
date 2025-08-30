@@ -87,6 +87,20 @@ const (
 // Query parameter constants
 const (
 	QueryParamStatusCode = "__statusCode"
+	QueryParamDelay      = "__delay"
+)
+
+// Context key type for avoiding collisions
+type contextKey string
+
+// Context key constants
+const (
+	ContextKeyStatusCode = contextKey("statusCode")
+)
+
+// Delay simulation constants
+const (
+	MaxDelayDuration = 30 * time.Second
 )
 
 // Hop-by-hop headers that should not be forwarded

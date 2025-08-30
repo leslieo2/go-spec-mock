@@ -31,7 +31,7 @@ func (s *Server) generateCacheKey(method, path string, r *http.Request) string {
 	var params []string
 	for key, values := range query {
 		// Skip internal parameters that don't affect response content
-		if key == constants.QueryParamStatusCode || key == "_" {
+		if key == constants.QueryParamStatusCode || key == constants.QueryParamDelay || key == "_" {
 			continue
 		}
 		for _, value := range values {
@@ -115,15 +115,6 @@ func (s *Server) cacheResponse(cacheKey string, statusCode int, body []byte) {
 func (s *Server) clearCache() {
 	// Create a new empty cache map
 	s.cache = &sync.Map{}
-}
-
-// getStatusCodeFromRequest extracts the desired status code from the request
-func (s *Server) getStatusCodeFromRequest(r *http.Request) string {
-	statusCode := strconv.Itoa(constants.StatusOK)
-	if override := r.URL.Query().Get(constants.QueryParamStatusCode); override != "" {
-		statusCode = override
-	}
-	return statusCode
 }
 
 // generateResponse generates a response for the given route and status code

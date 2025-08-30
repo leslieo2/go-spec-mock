@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -102,6 +103,10 @@ func (s *Server) buildHandler() http.Handler {
 	// --- 1. Apply Middleware ---
 	// Logging middleware
 	router.Use(middleware.LoggingMiddleware(s.logger.Logger))
+	// Delay simulation middleware
+	router.Use(middleware.DelayMiddleware(s.logger.Logger))
+	// Status code extraction middleware
+	router.Use(middleware.StatusCodeMiddleware(s.logger.Logger))
 	// Request size limit middleware
 	router.Use(middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize))
 	// CORS middleware
@@ -217,15 +222,15 @@ func (s *Server) handleMockRequest(w http.ResponseWriter, r *http.Request, route
 		return
 	}
 
-	// Generate response
-	statusCode := s.getStatusCodeFromRequest(r)
-	buf, status, err := s.generateResponse(matchedRoute, statusCode)
+	// Generate response - get status code from context or use default
+	statusCodeStr := getStatusCodeFromContext(r)
+	buf, status, err := s.generateResponse(matchedRoute, statusCodeStr)
 	if err != nil {
 		if strings.Contains(err.Error(), "no example found") {
 			s.sendErrorResponse(w, http.StatusNotFound, err.Error())
 
 			s.logger.Logger.Warn("No example found",
-				zap.String("status_code", statusCode),
+				zap.String("status_code", statusCodeStr),
 				zap.String("path", r.URL.Path),
 			)
 		} else {
@@ -388,4 +393,12 @@ func (s *Server) handleProxyRequest(w http.ResponseWriter, r *http.Request) {
 // Name returns the name of this reloadable component
 func (s *Server) Name() string {
 	return "mock-server"
+}
+
+// getStatusCodeFromContext extracts status code from request context or returns default
+func getStatusCodeFromContext(r *http.Request) string {
+	if statusCode, ok := r.Context().Value(constants.ContextKeyStatusCode).(int); ok {
+		return strconv.Itoa(statusCode)
+	}
+	return strconv.Itoa(constants.StatusOK)
 }

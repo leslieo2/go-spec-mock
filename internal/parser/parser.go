@@ -162,10 +162,8 @@ func (p *Parser) GetExampleResponse(operation *openapi3.Operation, statusCode st
 }
 
 func generateExampleFromSchema(schema *openapi3.Schema) interface{} {
-	// Create a deterministic generator for consistent results
+	// Create a generator for consistent results
 	config := generator.Config{
-		Deterministic:       true, // Use fixed seed for consistent caching
-		Seed:                42,   // Fixed seed for deterministic generation
 		UseFieldNameForData: true, // Enable field name intelligence
 		DefaultArrayLength:  2,    // Generate 2 items by default
 	}

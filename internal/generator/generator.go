@@ -1,25 +1,17 @@
 package generator
 
 import (
-	"crypto/rand"
 	"fmt"
 	"math"
-	"math/big"
-	mrand "math/rand"
 	"strings"
-	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/go-faker/faker/v4"
-	"github.com/lucasjones/reggen"
 )
 
 // Config holds configuration options for the data generator
 type Config struct {
-	Deterministic       bool  // Fixed seed for consistent testing
-	Seed                int64 // Optional seed (default 42 for deterministic)
-	UseFieldNameForData bool  // Infer data from field names
-	DefaultArrayLength  int   // Default array size
+	UseFieldNameForData bool // Infer data from field names
+	DefaultArrayLength  int  // Default array size
 }
 
 // GenerationContext provides context for data generation
@@ -31,7 +23,7 @@ type GenerationContext struct {
 // Generator handles dynamic data generation from OpenAPI schemas
 type Generator struct {
 	config         Config
-	rand           *mrand.Rand
+	randomSource   RandomSource
 	formatHandlers map[string]func() string
 }
 
@@ -45,45 +37,22 @@ func New(config Config) *Generator {
 		config: config,
 	}
 
-	if config.Deterministic {
-		seed := config.Seed
-		if seed == 0 {
-			seed = 42 // Default deterministic seed
-		}
-		// #nosec G404
-		// math/rand is used here for deterministic generation of mock data, which is not security-sensitive.
-		g.rand = mrand.New(mrand.NewSource(seed))
-	}
+	g.randomSource = NewSecureRandomSource()
 
 	g.initFormatHandlers()
 	return g
 }
 
 func (g *Generator) randIntn(n int) int {
-	if g.config.Deterministic {
-		return g.rand.Intn(n)
-	}
-	if n <= 0 {
-		return 0
-	}
-	val, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
-	return int(val.Int64())
+	return g.randomSource.Intn(n)
 }
 
 func (g *Generator) randFloat64() float64 {
-	if g.config.Deterministic {
-		return g.rand.Float64()
-	}
-	val, _ := rand.Int(rand.Reader, big.NewInt(1<<53))
-	return float64(val.Int64()) / (1 << 53)
+	return g.randomSource.Float64()
 }
 
 func (g *Generator) randInt() int {
-	if g.config.Deterministic {
-		return g.rand.Int()
-	}
-	val, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-	return int(val.Int64())
+	return g.randomSource.Int()
 }
 
 func safeUint64ToInt(u uint64) int {
@@ -132,6 +101,7 @@ func (g *Generator) GenerateDataWithContext(schema *openapi3.Schema, ctx Generat
 	}
 
 	if len(schema.OneOf) > 0 {
+		// In deterministic mode, always pick the first schema
 		selectedSchema := schema.OneOf[g.randIntn(len(schema.OneOf))]
 		if selectedSchema.Value != nil {
 			return g.GenerateDataWithContext(selectedSchema.Value, ctx)
@@ -167,11 +137,18 @@ func (g *Generator) GenerateDataWithContext(schema *openapi3.Schema, ctx Generat
 // generateObject generates a mock object from schema properties
 func (g *Generator) generateObject(schema *openapi3.Schema, ctx GenerationContext) interface{} {
 	result := make(map[string]interface{}, len(schema.Properties))
+
+	// Add current schema title to parent schemas to prevent circular references
+	newParentSchemas := ctx.ParentSchemas
+	if schema.Title != "" {
+		newParentSchemas = append(ctx.ParentSchemas, schema.Title)
+	}
+
 	for propName, prop := range schema.Properties {
 		if prop.Value != nil {
 			childCtx := GenerationContext{
 				FieldName:     propName,
-				ParentSchemas: append(ctx.ParentSchemas, propName),
+				ParentSchemas: newParentSchemas,
 			}
 			result[propName] = g.GenerateDataWithContext(prop.Value, childCtx)
 		}
@@ -213,6 +190,7 @@ func (g *Generator) generateArray(schema *openapi3.Schema, ctx GenerationContext
 }
 
 // generateString generates a mock string value
+// generateString generates a mock string value
 func (g *Generator) generateString(schema *openapi3.Schema, ctx GenerationContext) interface{} {
 	// Priority 3: Format-specific generation
 	if schema.Format != "" {
@@ -224,7 +202,7 @@ func (g *Generator) generateString(schema *openapi3.Schema, ctx GenerationContex
 
 	// Priority 4: Pattern-based generation
 	if schema.Pattern != "" {
-		if result, err := reggen.Generate(schema.Pattern, 10); err == nil {
+		if result, err := g.randomSource.GeneratePattern(schema.Pattern, 10); err == nil {
 			return g.applyStringConstraints(result, schema)
 		}
 	}
@@ -237,7 +215,7 @@ func (g *Generator) generateString(schema *openapi3.Schema, ctx GenerationContex
 	}
 
 	// Priority 6: Default realistic string
-	result := faker.Word()
+	result := g.randomSource.Word()
 	return g.applyStringConstraints(result, schema)
 }
 
@@ -316,15 +294,15 @@ func (g *Generator) generateBoolean(schema *openapi3.Schema, ctx GenerationConte
 // initFormatHandlers initializes the format handler registry
 func (g *Generator) initFormatHandlers() {
 	g.formatHandlers = map[string]func() string{
-		"email":     func() string { return faker.Email() },
-		"uuid":      func() string { return faker.UUIDHyphenated() },
-		"uri":       func() string { return faker.URL() },
-		"url":       func() string { return faker.URL() },
-		"hostname":  func() string { return faker.DomainName() },
-		"ipv4":      func() string { return faker.IPv4() },
-		"ipv6":      func() string { return faker.IPv6() },
-		"date":      func() string { return time.Now().AddDate(0, 0, g.randIntn(365)-182).Format("2006-01-02") },
-		"date-time": func() string { return time.Now().AddDate(0, 0, g.randIntn(365)-182).Format(time.RFC3339) },
+		"email":     func() string { return g.randomSource.Email() },
+		"uuid":      func() string { return g.randomSource.UUIDHyphenated() },
+		"uri":       func() string { return g.randomSource.URL() },
+		"url":       func() string { return g.randomSource.URL() },
+		"hostname":  func() string { return g.randomSource.DomainName() },
+		"ipv4":      func() string { return g.randomSource.IPv4() },
+		"ipv6":      func() string { return g.randomSource.IPv6() },
+		"date":      func() string { return g.randomSource.Date() },
+		"date-time": func() string { return g.randomSource.DateTime() },
 	}
 }
 
@@ -342,7 +320,7 @@ func (g *Generator) applyStringConstraints(str string, schema *openapi3.Schema) 
 	if schema.MinLength > 0 && uint64(len(str)) < schema.MinLength {
 		minLen := safeUint64ToInt(schema.MinLength)
 		for len(str) < minLen {
-			str += faker.Word()
+			str += g.randomSource.Word()
 		}
 		// Trim to exact length if we overshot
 		if uint64(len(str)) > schema.MinLength {
@@ -359,21 +337,21 @@ func (g *Generator) generateByFieldName(fieldName string) string {
 
 	switch {
 	case strings.Contains(lowerField, "firstname") || strings.Contains(lowerField, "first_name"):
-		return faker.FirstName()
+		return g.randomSource.FirstName()
 	case strings.Contains(lowerField, "lastname") || strings.Contains(lowerField, "last_name"):
-		return faker.LastName()
+		return g.randomSource.LastName()
 	case strings.Contains(lowerField, "name") && !strings.Contains(lowerField, "user"):
-		return faker.Name()
+		return g.randomSource.Name()
 	case strings.Contains(lowerField, "email"):
-		return faker.Email()
+		return g.randomSource.Email()
 	case strings.Contains(lowerField, "phone"):
-		return faker.Phonenumber()
+		return g.randomSource.Phonenumber()
 	case strings.Contains(lowerField, "address"):
-		return faker.Sentence()
+		return g.randomSource.Sentence()
 	case strings.Contains(lowerField, "company"):
-		return faker.Word()
+		return g.randomSource.Word()
 	case strings.Contains(lowerField, "username"):
-		return faker.Username()
+		return g.randomSource.Username()
 	}
 
 	return ""

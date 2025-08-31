@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/leslieo2/go-spec-mock/internal/config"
 	"github.com/leslieo2/go-spec-mock/internal/hotreload"
@@ -13,6 +16,12 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	// No longer require positional arguments
 
 	// Parse CLI flags
@@ -37,6 +46,10 @@ func main() {
 
 	pflag.Parse()
 
+	// Create signal-aware context for graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// Create CLI flags struct for configuration loading
 	cliFlags := &config.CLIFlags{
 		Host:         host,
@@ -53,7 +66,7 @@ func main() {
 	// Load configuration with precedence (CLI > Env > File > Defaults)
 	cfg, err := config.LoadConfig(*configFile, cliFlags)
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// Validate configuration and spec file
@@ -63,16 +76,16 @@ func main() {
 		os.Exit(1)
 	}
 	if _, err := os.Stat(cfg.SpecFile); os.IsNotExist(err) {
-		log.Fatalf("OpenAPI spec file not found: %s", cfg.SpecFile)
+		return fmt.Errorf("OpenAPI spec file not found: %s", cfg.SpecFile)
 	}
 	if err := cfg.Validate(); err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Create mock server with configuration
 	mockServer, err := server.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to create mock server: %v", err)
+		return fmt.Errorf("failed to create mock server: %w", err)
 	}
 
 	// Initialize hot reload if enabled
@@ -80,7 +93,7 @@ func main() {
 	if cfg.HotReload.Enabled {
 		hotReloadManager, err = hotreload.NewManager()
 		if err != nil {
-			log.Fatalf("Failed to create hot reload manager: %v", err)
+			return fmt.Errorf("failed to create hot reload manager: %w", err)
 		}
 
 		// Set debounce time from config
@@ -88,17 +101,17 @@ func main() {
 
 		// Watch the spec file
 		if err := hotReloadManager.AddWatch(cfg.SpecFile); err != nil {
-			log.Fatalf("Failed to watch spec file: %v", err)
+			return fmt.Errorf("failed to watch spec file: %w", err)
 		}
 
 		// Register the server as a reloadable component
 		if err := hotReloadManager.RegisterReloadable(mockServer); err != nil {
-			log.Fatalf("Failed to register server for hot reload: %v", err)
+			return fmt.Errorf("failed to register server for hot reload: %w", err)
 		}
 
 		// Start hot reload manager
 		if err := hotReloadManager.Start(); err != nil {
-			log.Fatalf("Failed to start hot reload: %v", err)
+			return fmt.Errorf("failed to start hot reload: %w", err)
 		}
 
 		log.Printf("Hot reload enabled for %s", cfg.SpecFile)
@@ -106,15 +119,22 @@ func main() {
 
 	log.Printf("Starting mock server for %s on %s:%s", cfg.SpecFile, cfg.Server.Host, cfg.Server.Port)
 	if err := mockServer.Start(); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		return fmt.Errorf("failed to start server: %w", err)
 	}
 
-	// Shutdown hot reload manager if enabled
+	// Wait for shutdown signal
+	<-ctx.Done()
+
+	// Shutdown hot reload manager if enabled with timeout context
 	if hotReloadManager != nil {
-		if err := hotReloadManager.Shutdown(context.Background()); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := hotReloadManager.Shutdown(shutdownCtx); err != nil {
 			log.Printf("Failed to shutdown hot reload manager: %v", err)
 		}
 	}
+
+	return nil
 }
 
 // printUsage prints the usage information
@@ -127,9 +147,13 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "\nServer configuration:\n")
 	fmt.Fprintf(os.Stderr, "  -host\t\t\tHost to run the mock server on (default: localhost)\n")
 	fmt.Fprintf(os.Stderr, "  -port\t\t\tPort to run the mock server on (default: 8080)\n")
-	fmt.Fprintf(os.Stderr, "\nSecurity flags:\n")
-	fmt.Fprintf(os.Stderr, "  -rate-limit-enabled\tEnable rate limiting (default: false)\n")
-	fmt.Fprintf(os.Stderr, "  -rate-limit-strategy\tRate limiting strategy: ip (default: ip)\n")
+	fmt.Fprintf(os.Stderr, "\nProxy flags:\n")
+	fmt.Fprintf(os.Stderr, "  -proxy-enabled\t\tEnable proxy mode for undefined endpoints (default: false)\n")
+	fmt.Fprintf(os.Stderr, "  -proxy-target\t\tTarget server URL for proxy mode\n")
+	fmt.Fprintf(os.Stderr, "\nTLS flags:\n")
+	fmt.Fprintf(os.Stderr, "  -tls-enabled\t\tEnable HTTPS/TLS (default: false)\n")
+	fmt.Fprintf(os.Stderr, "  -tls-cert-file\t\tPath to TLS certificate file\n")
+	fmt.Fprintf(os.Stderr, "  -tls-key-file\t\tPath to TLS private key file\n")
 	fmt.Fprintf(os.Stderr, "\nHot reload flags:\n")
 	fmt.Fprintf(os.Stderr, "  -hot-reload\t\tEnable hot reload for specification file (default: true)\n")
 	fmt.Fprintf(os.Stderr, "\nEnvironment variables:\n")
@@ -140,7 +164,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "\nConfiguration file:\n")
 	fmt.Fprintf(os.Stderr, "  go-spec-mock.yaml (default configuration file)\n")
 	fmt.Fprintf(os.Stderr, "\nExample usage:\n")
-	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -rate-limit-enabled\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -proxy-enabled\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -config ./config.yaml\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -spec-file ./examples/petstore.yaml -port 8081\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  GO_SPEC_MOCK_PORT=8081 %s -spec-file ./examples/petstore.yaml\n", os.Args[0])

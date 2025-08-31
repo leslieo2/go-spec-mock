@@ -55,20 +55,20 @@ func (b *Broadcaster) RemoveListener(name string) {
 // Broadcast sends an event to all registered listeners
 func (b *Broadcaster) Broadcast(ctx context.Context, event Event) error {
 	b.mu.RLock()
-	listeners := make([]Listener, 0, len(b.listeners))
-	for _, listener := range b.listeners {
-		listeners = append(listeners, listener)
+	listenerSnapshot := make(map[string]Listener, len(b.listeners))
+	for name, listener := range b.listeners {
+		listenerSnapshot[name] = listener
 	}
 	b.mu.RUnlock()
 
-	if len(listeners) == 0 {
+	if len(listenerSnapshot) == 0 {
 		return nil
 	}
 
 	var wg sync.WaitGroup
-	errors := make(chan error, len(listeners))
+	errors := make(chan error, len(listenerSnapshot))
 
-	for name, listener := range b.listeners {
+	for name, listener := range listenerSnapshot {
 		wg.Add(1)
 		go func(n string, l Listener) {
 			defer wg.Done()

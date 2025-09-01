@@ -63,7 +63,7 @@ func run() error {
 		TLSKeyFile:   tlsKeyFile,
 	}
 
-	// Load configuration with precedence (CLI > Env > File > Defaults)
+	// Load configuration with precedence (CLI flags > Environment variables > Config file > Defaults)
 	cfg, err := config.LoadConfig(*configFile, cliFlags)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)

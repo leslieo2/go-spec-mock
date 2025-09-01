@@ -18,8 +18,7 @@ import (
 // 1. Explicit CLI flags (highest priority)
 // 2. Environment variables
 // 3. Configuration file values
-// 4. CLI flag default values
-// 5. Default configuration values (lowest priority)
+// 4. Default configuration values (lowest priority)
 func LoadConfig(configFile string, cliFlags *CLIFlags) (*Config, error) {
 	// Start with default configuration
 	config := DefaultConfig()

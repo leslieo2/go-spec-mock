@@ -146,12 +146,10 @@ Configuration is applied in the following order (highest → lowest priority):
 1. **Explicit CLI Flags** (e.g., `--port 8443`) - Highest priority
 2. **Environment Variables** (`GO_SPEC_MOCK_PORT=8443`)
 3. **Configuration File Values** (`port: "8443"` in config.yaml)
-4. **CLI Flag Default Values** (e.g., default value for `--port`)
-5. **Default Configuration** - Built-in defaults (lowest priority)
+4. **Default Configuration** - Built-in defaults (lowest priority)
 
 **Important Notes:**
-- Only explicitly set CLI flags override other configuration sources
-- CLI flag default values have lower priority than configuration files
+- Only explicitly set CLI flags override other configuration sources  
 - Environment variables override configuration file values
 - For production use, prefer configuration files over CLI flags
 

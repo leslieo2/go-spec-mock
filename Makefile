@@ -51,16 +51,6 @@ run-example:
 	@echo "Starting mock server with petstore example..."
 	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml
 
-# Run with example petstore and security features enabled
-run-example-secure: build
-	@echo "Starting mock server with petstore example (auth and rate limit enabled)"
-	$(BIN_DIR)/$(BINARY) --spec-file ./examples/petstore.yaml --auth-enabled --rate-limit-enabled --rate-limit-rps 10
-
-# Run with security-focused configuration
-run-example-secure-config: build
-	@echo "Starting mock server with security-focused configuration..."
-	$(BIN_DIR)/$(BINARY) --config ./examples/config/security-focused.yaml --spec-file ./examples/petstore.yaml
-
 # Run with minimal configuration
 run-example-minimal: build
 	@echo "Starting mock server with minimal configuration..."

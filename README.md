@@ -334,8 +334,6 @@ This project uses a `Makefile` to streamline common development tasks.
 | :--- | :--- |
 | `make build` | Build the `go-spec-mock` binary for your OS. |
 | `make run-example` | Run the server with the example `petstore.yaml` spec. |
-| `make run-example-secure` | Run with security features enabled. |
-| `make run-example-secure-config` | Run with security-focused configuration. |
 | `make run-example-minimal` | Run with minimal configuration. |
 | `make test` | Run all tests with coverage report. |
 | `make test-quick` | Run tests without coverage. |

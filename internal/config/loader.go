@@ -102,52 +102,61 @@ func loadFromFile(filePath string) (*Config, error) {
 	return config, nil
 }
 
+// Helper functions for environment variable loading
+func setStringFromEnv(envVar string, target *string) {
+	if val := os.Getenv(envVar); val != "" {
+		*target = val
+	}
+}
+
+func setBoolFromEnv(envVar string, target *bool) {
+	if val := os.Getenv(envVar); val != "" {
+		if enabled, err := strconv.ParseBool(val); err == nil {
+			*target = enabled
+		}
+	}
+}
+
+func setDurationFromEnv(envVar string, target *time.Duration) {
+	if val := os.Getenv(envVar); val != "" {
+		if duration, err := time.ParseDuration(val); err == nil {
+			*target = duration
+		}
+	}
+}
+
 // loadFromEnv loads configuration from environment variables
 func loadFromEnv(config *Config) {
 	// Server configuration
-	if val := os.Getenv(constants.EnvHost); val != "" {
-		config.Server.Host = val
-	}
-	if val := os.Getenv(constants.EnvPort); val != "" {
-		config.Server.Port = val
-	}
+	setStringFromEnv(constants.EnvHost, &config.Server.Host)
+	setStringFromEnv(constants.EnvPort, &config.Server.Port)
 
-	if val := os.Getenv(constants.EnvSpecFile); val != "" {
-		config.SpecFile = val
+	// Spec file and hot reload
+	setStringFromEnv(constants.EnvSpecFile, &config.SpecFile)
+	setBoolFromEnv(constants.EnvHotReload, &config.HotReload.Enabled)
+	setDurationFromEnv(constants.EnvHotReloadDebounce, &config.HotReload.Debounce)
+
+	// Proxy configuration
+	setBoolFromEnv(constants.EnvProxyEnabled, &config.Proxy.Enabled)
+	setStringFromEnv(constants.EnvProxyTarget, &config.Proxy.Target)
+	setDurationFromEnv(constants.EnvProxyTimeout, &config.Proxy.Timeout)
+
+	// TLS configuration
+	setBoolFromEnv(constants.EnvTLSEnabled, &config.TLS.Enabled)
+	setStringFromEnv(constants.EnvTLSCertFile, &config.TLS.CertFile)
+	setStringFromEnv(constants.EnvTLSKeyFile, &config.TLS.KeyFile)
+}
+
+// Helper functions for CLI flag overrides
+func setStringFromCLI(flagValue *string, flagName string, target *string) {
+	if flagValue != nil && isFlagSet(flagName) && *flagValue != "" {
+		*target = *flagValue
 	}
-	if val := os.Getenv(constants.EnvHotReload); val != "" {
-		if enabled, err := strconv.ParseBool(val); err == nil {
-			config.HotReload.Enabled = enabled
-		}
-	}
-	if val := os.Getenv(constants.EnvHotReloadDebounce); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			config.HotReload.Debounce = duration
-		}
-	}
-	if val := os.Getenv(constants.EnvProxyEnabled); val != "" {
-		if enabled, err := strconv.ParseBool(val); err == nil {
-			config.Proxy.Enabled = enabled
-		}
-	}
-	if val := os.Getenv(constants.EnvProxyTarget); val != "" {
-		config.Proxy.Target = val
-	}
-	if val := os.Getenv(constants.EnvProxyTimeout); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			config.Proxy.Timeout = duration
-		}
-	}
-	if val := os.Getenv(constants.EnvTLSEnabled); val != "" {
-		if enabled, err := strconv.ParseBool(val); err == nil {
-			config.TLS.Enabled = enabled
-		}
-	}
-	if val := os.Getenv(constants.EnvTLSCertFile); val != "" {
-		config.TLS.CertFile = val
-	}
-	if val := os.Getenv(constants.EnvTLSKeyFile); val != "" {
-		config.TLS.KeyFile = val
+}
+
+func setBoolFromCLI(flagValue *bool, flagName string, target *bool) {
+	if flagValue != nil && isFlagSet(flagName) {
+		*target = *flagValue
 	}
 }
 
@@ -159,39 +168,21 @@ func overrideWithCLI(config *Config, flags *CLIFlags) {
 	}
 
 	// Server configuration
-	if flags.Host != nil && isFlagSet("host") && *flags.Host != "" {
-		config.Server.Host = *flags.Host
-	}
-	if flags.Port != nil && isFlagSet("port") && *flags.Port != "" {
-		config.Server.Port = *flags.Port
-	}
+	setStringFromCLI(flags.Host, "host", &config.Server.Host)
+	setStringFromCLI(flags.Port, "port", &config.Server.Port)
 
 	// Spec file and hot reload
-	if flags.SpecFile != nil && isFlagSet("spec-file") && *flags.SpecFile != "" {
-		config.SpecFile = *flags.SpecFile
-	}
-	if flags.HotReload != nil && isFlagSet("hot-reload") {
-		config.HotReload.Enabled = *flags.HotReload
-	}
+	setStringFromCLI(flags.SpecFile, "spec-file", &config.SpecFile)
+	setBoolFromCLI(flags.HotReload, "hot-reload", &config.HotReload.Enabled)
 
 	// Proxy configuration
-	if flags.ProxyEnabled != nil && isFlagSet("proxy-enabled") {
-		config.Proxy.Enabled = *flags.ProxyEnabled
-	}
-	if flags.ProxyTarget != nil && isFlagSet("proxy-target") && *flags.ProxyTarget != "" {
-		config.Proxy.Target = *flags.ProxyTarget
-	}
+	setBoolFromCLI(flags.ProxyEnabled, "proxy-enabled", &config.Proxy.Enabled)
+	setStringFromCLI(flags.ProxyTarget, "proxy-target", &config.Proxy.Target)
 
 	// TLS configuration
-	if flags.TLSEnabled != nil && isFlagSet("tls-enabled") {
-		config.TLS.Enabled = *flags.TLSEnabled
-	}
-	if flags.TLSCertFile != nil && isFlagSet("tls-cert-file") && *flags.TLSCertFile != "" {
-		config.TLS.CertFile = *flags.TLSCertFile
-	}
-	if flags.TLSKeyFile != nil && isFlagSet("tls-key-file") && *flags.TLSKeyFile != "" {
-		config.TLS.KeyFile = *flags.TLSKeyFile
-	}
+	setBoolFromCLI(flags.TLSEnabled, "tls-enabled", &config.TLS.Enabled)
+	setStringFromCLI(flags.TLSCertFile, "tls-cert-file", &config.TLS.CertFile)
+	setStringFromCLI(flags.TLSKeyFile, "tls-key-file", &config.TLS.KeyFile)
 }
 
 // isFlagSet checks if a flag is set (changed) in pflag, or returns true if pflag is not initialized

@@ -80,6 +80,7 @@ func TestCORSMiddleware(t *testing.T) {
 		[]string{"Content-Type"},
 		true,
 		3600,
+		zap.NewNop(),
 	)
 
 	// Test handler
@@ -115,6 +116,7 @@ func TestCORSMiddleware_Preflight(t *testing.T) {
 		[]string{"Content-Type"},
 		false,
 		0,
+		zap.NewNop(),
 	)
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -156,7 +158,7 @@ func TestCORSMiddleware_Disabled(t *testing.T) {
 
 func TestRequestSizeLimitMiddleware(t *testing.T) {
 	// Create request size limit middleware directly
-	requestSizeLimit := middleware.RequestSizeLimitMiddleware(1024) // 1KB limit
+	requestSizeLimit := middleware.RequestSizeLimitMiddleware(1024, zap.NewNop()) // 1KB limit
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -189,7 +191,7 @@ func TestRequestSizeLimitMiddleware(t *testing.T) {
 
 func TestRequestSizeLimitMiddleware_NoLimit(t *testing.T) {
 	// Create request size limit middleware with no limit (0)
-	requestSizeLimit := middleware.RequestSizeLimitMiddleware(0) // No limit
+	requestSizeLimit := middleware.RequestSizeLimitMiddleware(0, zap.NewNop()) // No limit
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

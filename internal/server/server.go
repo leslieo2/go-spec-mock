@@ -96,11 +96,8 @@ func New(cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
-// buildHandler creates a new http.Handler using the chi router for proper path parameter support.
-func (s *Server) buildHandler() http.Handler {
-	router := chi.NewRouter()
-
-	// --- 1. Apply Middleware ---
+// setupMiddleware applies all middleware to the router
+func (s *Server) setupMiddleware(router *chi.Mux) {
 	// Logging middleware
 	router.Use(middleware.LoggingMiddleware(s.logger.Logger))
 	// Delay simulation middleware
@@ -110,7 +107,7 @@ func (s *Server) buildHandler() http.Handler {
 	// Example name selection middleware
 	router.Use(middleware.ExampleMiddleware(s.logger.Logger))
 	// Request size limit middleware
-	router.Use(middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize))
+	router.Use(middleware.RequestSizeLimitMiddleware(constants.ServerMaxRequestSize, s.logger.Logger))
 	// CORS middleware
 	if s.config.Security.CORS.Enabled {
 		corsMiddleware := middleware.NewCORSMiddleware(
@@ -119,11 +116,14 @@ func (s *Server) buildHandler() http.Handler {
 			s.config.Security.CORS.AllowedHeaders,
 			s.config.Security.CORS.AllowCredentials,
 			s.config.Security.CORS.MaxAge,
+			s.logger.Logger,
 		)
 		router.Use(corsMiddleware.Handler)
 	}
+}
 
-	// --- 2. Register Special Routes ---
+// registerSpecialRoutes registers health, ready, documentation, and root redirect routes
+func (s *Server) registerSpecialRoutes(router *chi.Mux) {
 	router.Get(constants.PathHealth, s.healthHandler)
 	router.Get(constants.PathReady, s.readinessHandler)
 	router.Get(constants.PathDocumentation, s.serveDocumentation)
@@ -141,8 +141,10 @@ func (s *Server) buildHandler() http.Handler {
 		}
 		// If rootExists, the more specific handler registered below will take precedence.
 	})
+}
 
-	// --- 3. Register All OpenAPI Mock Routes ---
+// registerMockRoutes registers all OpenAPI mock routes from the route map
+func (s *Server) registerMockRoutes(router *chi.Mux) {
 	s.mu.RLock()
 	routeMapCopy := s.routeMap
 	s.mu.RUnlock()
@@ -161,8 +163,10 @@ func (s *Server) buildHandler() http.Handler {
 			router.Method(strings.ToUpper(route.Method), path, http.HandlerFunc(handler))
 		}
 	}
+}
 
-	// --- 4. Register the Fallback Proxy Handler ---
+// setupFallbackHandler registers the fallback proxy or not found handler
+func (s *Server) setupFallbackHandler(router *chi.Mux) {
 	// This handler is only called if NO route above matches.
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if s.config.Proxy.Enabled {
@@ -172,6 +176,23 @@ func (s *Server) buildHandler() http.Handler {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+// buildHandler creates a new http.Handler using the chi router for proper path parameter support.
+func (s *Server) buildHandler() http.Handler {
+	router := chi.NewRouter()
+
+	// --- 1. Apply Middleware ---
+	s.setupMiddleware(router)
+
+	// --- 2. Register Special Routes ---
+	s.registerSpecialRoutes(router)
+
+	// --- 3. Register All OpenAPI Mock Routes ---
+	s.registerMockRoutes(router)
+
+	// --- 4. Register the Fallback Proxy Handler ---
+	s.setupFallbackHandler(router)
 
 	return router
 }

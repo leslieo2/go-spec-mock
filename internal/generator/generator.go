@@ -335,23 +335,27 @@ func (g *Generator) applyStringConstraints(str string, schema *openapi3.Schema) 
 func (g *Generator) generateByFieldName(fieldName string) string {
 	lowerField := strings.ToLower(fieldName)
 
-	switch {
-	case strings.Contains(lowerField, "firstname") || strings.Contains(lowerField, "first_name"):
-		return g.randomSource.FirstName()
-	case strings.Contains(lowerField, "lastname") || strings.Contains(lowerField, "last_name"):
-		return g.randomSource.LastName()
-	case strings.Contains(lowerField, "name") && !strings.Contains(lowerField, "user"):
-		return g.randomSource.Name()
-	case strings.Contains(lowerField, "email"):
-		return g.randomSource.Email()
-	case strings.Contains(lowerField, "phone"):
-		return g.randomSource.Phonenumber()
-	case strings.Contains(lowerField, "address"):
-		return g.randomSource.Sentence()
-	case strings.Contains(lowerField, "company"):
-		return g.randomSource.Word()
-	case strings.Contains(lowerField, "username"):
-		return g.randomSource.Username()
+	fieldHandlers := map[string]func() string{
+		"firstname":  g.randomSource.FirstName,
+		"first_name": g.randomSource.FirstName,
+		"lastname":   g.randomSource.LastName,
+		"last_name":  g.randomSource.LastName,
+		"name":       g.randomSource.Name,
+		"email":      g.randomSource.Email,
+		"phone":      g.randomSource.Phonenumber,
+		"address":    g.randomSource.Sentence,
+		"company":    g.randomSource.Word,
+		"username":   g.randomSource.Username,
+	}
+
+	for pattern, handler := range fieldHandlers {
+		if strings.Contains(lowerField, pattern) {
+			// Special case: "name" should not match if "username" is present
+			if pattern == "name" && strings.Contains(lowerField, "user") {
+				continue
+			}
+			return handler()
+		}
 	}
 
 	return ""

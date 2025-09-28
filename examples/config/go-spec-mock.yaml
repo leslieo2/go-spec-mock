@@ -1,12 +1,10 @@
-# Go-Spec-Mock Configuration File
-# This file demonstrates all available configuration options
+# Go-Spec-Mock configuration demonstrating the major options available.
+# Values shown here mirror the defaults unless otherwise noted.
 
-# Server Configuration
 server:
   host: "localhost"
   port: "8080"
 
-# Security Configuration
 security:
   cors:
     enabled: true
@@ -16,32 +14,25 @@ security:
     allow_credentials: false
     max_age: 86400
 
-# Observability Configuration
 observability:
   logging:
-    level: "info"  # "debug", "info", "warn", "error"
-    format: "json"  # "json" or "console"
+    level: "info"        # "debug", "info", "warn", "error"
+    format: "json"        # "json" or "console"
+    output: "stdout"      # "stdout", "stderr", or a file path
+    development: false    # Enables zap development mode when true
 
-# Hot Reload Configuration
 hot_reload:
   enabled: true
   debounce: "500ms"
 
-# Proxy Configuration
-# Forwards requests for undefined endpoints to a target server
 proxy:
   enabled: false
-  target: "https://api.example.com"
-  timeout: "30s"
+  target: "https://api.example.com"  # Required if proxy.enabled is true
+  timeout: "30s"                     # Defaults to 30s when omitted
 
-# OpenAPI Specification
 spec_file: "./examples/petstore.yaml"
 
-# TLS Configuration
-# Enables HTTPS for the mock server.
-# To generate a self-signed certificate for local testing:
-# openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
 tls:
   enabled: false
-  cert_file: "cert.pem"  # Path to your TLS certificate file
-  key_file: "key.pem"     # Path to your TLS private key file
+  cert_file: "cert.pem"  # Required when TLS is enabled
+  key_file: "key.pem"

@@ -1,8 +1,7 @@
-# Minimal configuration file for Go-Spec-Mock
-# Only required settings are included
-
-server:
-  host: "localhost"
-  port: "8080"
+# Minimal configuration for Go-Spec-Mock.
+# The only required setting is the OpenAPI specification file.
 
 spec_file: "./examples/petstore.yaml"
+
+# Host defaults to "localhost" and port defaults to "8080".
+# Override them with CLI flags or environment variables when needed.

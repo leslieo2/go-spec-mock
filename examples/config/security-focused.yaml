@@ -1,11 +1,10 @@
-# Security-focused configuration for Go-Spec-Mock
-# This configuration prioritizes security and monitoring
+# Security-focused configuration for Go-Spec-Mock.
+# Tightens CORS, disables hot reload, and prepares for TLS hardening.
 
 server:
   host: "localhost"
   port: "8080"
 
-# Comprehensive security configuration
 security:
   cors:
     enabled: true
@@ -15,21 +14,25 @@ security:
     allow_credentials: true
     max_age: 3600
 
-# Enhanced observability
 observability:
   logging:
-    level: "debug"
+    level: "warn"
     format: "json"
+    output: "stdout"
+    development: false
 
 spec_file: "./examples/petstore.yaml"
 
-# Proxy is disabled for security reasons
 proxy:
-  enabled: false
+  enabled: false          # Enable only when you trust the upstream target
   target: ""
   timeout: "30s"
 
-# Hot reload is disabled for production-like environments
 hot_reload:
-  enabled: false
+  enabled: false          # Disable file watching for production-like environments
   debounce: "500ms"
+
+tls:
+  enabled: false
+  cert_file: "certs/server.crt"  # Provide real paths before enabling TLS
+  key_file: "certs/server.key"
